@@ -1,0 +1,19 @@
+{
+  "name": "tuneboxd-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "TuneBoxd API: authentication and session handling (temporary in-memory user store).",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "express": "^5.1.0",
+    "express-session": "^1.18.1"
+  }
+}
