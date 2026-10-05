@@ -7,11 +7,18 @@ import { DuplicateUserError } from '../repositories/userRepository.js';
 import { ServiceError } from '../utils/errors.js';
 import { toSafeUser } from '../utils/safeUser.js';
 import { validateProfileUpdate } from '../utils/validation.js';
-import { throwDuplicateError } from './authService.js';
+import { assertAccountActive, throwDuplicateError } from './authService.js';
 
-/** @returns the safe user for this ID, or null if it no longer exists. */
-export async function getUserById(userId) {
-  return toSafeUser(await userRepository.findUserById(userId));
+/**
+ * Loads the user a session points at, fresh from the database.
+ * @returns the safe user, or null if the account no longer exists.
+ * Throws a 403 ServiceError if the account has been suspended.
+ */
+export async function getSessionUser(userId) {
+  const user = await userRepository.findUserById(userId);
+  if (!user) return null;
+  assertAccountActive(user);
+  return toSafeUser(user);
 }
 
 /** Validates and applies username/email/display name/bio/avatar changes for the given user. */

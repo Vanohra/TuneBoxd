@@ -1,25 +1,19 @@
 /**
  * User repository: the ONLY module the rest of the backend uses to read or
- * write user records.
+ * write the `users` table.
  *
- * Right now every function is backed by the TEMPORARY in-memory store in
- * mockUserStore.js. When the database is ready, the database teammate only needs
- * to rewrite the bodies of these functions. Services, controllers, routes and
- * the frontend should not need to change.
+ * This is also the adapter between the database and the app. Rows use the
+ * schema's snake_case columns (user_id, password_hash, ...); the rest of the
+ * backend and the frontend use this camelCase record shape:
+ *   { id, username, email, passwordHash, displayName, bio, avatarUrl,
+ *     role, accountStatus, createdAt }
+ * `id` is always users.user_id (a number).
  *
- * Contract the rest of the app relies on:
- *   - Every function is async (returns a Promise), just like a real DB call.
- *   - User records are returned as plain objects with at least:
- *       { id, username, email, passwordHash, displayName, bio, avatarUrl, createdAt }
- *     displayName and bio are strings ('' when empty); avatarUrl is a string or null.
- *     If the real table uses different column names, map them to this shape
- *     here so nothing upstream changes.
- *   - Lookups by username/email are case-insensitive.
- *   - Lookups return null when nothing matches.
- *   - createUser/updateUser throw DuplicateUserError when a username or email is
- *     already taken (a real DB would signal this with a unique-constraint error).
+ * All SQL uses `?` placeholders (prepared statements), never string concatenation.
+ * Lookups by username/email are case-insensitive because the columns use the
+ * case-insensitive utf8mb4_unicode_ci collation.
  */
-import { mockUsers, generateUserId } from './mockUserStore.js';
+import { pool } from '../db.js';
 
 export class DuplicateUserError extends Error {
   constructor(field) {
@@ -29,63 +23,80 @@ export class DuplicateUserError extends Error {
   }
 }
 
-const normalize = (value) => String(value).trim().toLowerCase();
+const USER_COLUMNS = `user_id, username, email, password_hash, display_name, bio, avatar_url,
+  role, account_status, created_at`;
 
-// Return copies so callers can't mutate the store by accident.
-const copy = (user) => (user ? { ...user } : null);
+function toUser(row) {
+  if (!row) return null;
+  return {
+    id: row.user_id,
+    username: row.username,
+    email: row.email,
+    passwordHash: row.password_hash,
+    displayName: row.display_name ?? '',
+    bio: row.bio ?? '',
+    avatarUrl: row.avatar_url ?? null,
+    role: row.role,
+    accountStatus: row.account_status,
+    createdAt: row.created_at,
+  };
+}
 
-// TEMPORARY: helper for the mock store only. A database enforces this with unique constraints.
-function assertUnique({ username, email }, ignoreId = null) {
-  for (const user of mockUsers) {
-    if (user.id === ignoreId) continue;
-    if (username !== undefined && normalize(user.username) === normalize(username)) {
-      throw new DuplicateUserError('username');
-    }
-    if (email !== undefined && normalize(user.email) === normalize(email)) {
-      throw new DuplicateUserError('email');
-    }
+/** Turns MySQL's duplicate-key error (UNIQUE username/email) into DuplicateUserError. */
+function rethrowDuplicate(err) {
+  if (err.code === 'ER_DUP_ENTRY') {
+    // sqlMessage looks like: Duplicate entry 'x' for key 'users.email'
+    const key = /for key '(?:[\w]+\.)?(\w+)'/.exec(err.sqlMessage || '')?.[1];
+    if (key === 'username' || key === 'email') throw new DuplicateUserError(key);
   }
+  throw err;
+}
+
+async function findOne(whereClause, value) {
+  const [rows] = await pool.execute(`SELECT ${USER_COLUMNS} FROM users WHERE ${whereClause} LIMIT 1`, [value]);
+  return toUser(rows[0]);
 }
 
 export async function findUserById(id) {
-  // TODO: Replace temporary user store with database lookup by user ID.
-  return copy(mockUsers.find((user) => user.id === id));
+  return findOne('user_id = ?', id);
 }
 
 export async function findUserByUsername(username) {
-  // TODO: Replace temporary user store with case-insensitive database lookup by username.
-  return copy(mockUsers.find((user) => normalize(user.username) === normalize(username)));
+  return findOne('username = ?', String(username).trim());
 }
 
 export async function findUserByEmail(email) {
-  // TODO: Replace temporary user store with case-insensitive database lookup by email.
-  return copy(mockUsers.find((user) => normalize(user.email) === normalize(email)));
+  return findOne('email = ?', String(email).trim().toLowerCase());
 }
 
 /**
+ * Inserts a new user. role and account_status are intentionally NOT set here,
+ * so every signup gets the schema defaults ('user', 'active').
  * @param {{ username: string, email: string, passwordHash: string }} data
  * @returns the created user record
  */
 export async function createUser({ username, email, passwordHash }) {
-  // TODO: Replace temporary user store with database insert.
-  // The database should generate `id` and `createdAt`, and translate a
-  // unique-constraint violation into `new DuplicateUserError('username' | 'email')`.
-  assertUnique({ username, email });
-  const user = {
-    id: generateUserId(),
-    username,
-    email,
-    passwordHash,
-    displayName: '',
-    bio: '',
-    avatarUrl: null,
-    createdAt: new Date().toISOString(),
-  };
-  mockUsers.push(user);
-  return copy(user);
+  try {
+    const [result] = await pool.execute(
+      'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
+      [username, email, passwordHash],
+    );
+    return findUserById(result.insertId);
+  } catch (err) {
+    rethrowDuplicate(err);
+  }
 }
 
-const UPDATABLE_FIELDS = ['username', 'email', 'displayName', 'bio', 'avatarUrl'];
+// App field → column. Only these can be changed through updateUser (never role,
+// account_status or password_hash). Column names come from this fixed map, never
+// from user input; values are always bound with placeholders.
+const UPDATABLE_COLUMNS = {
+  username: 'username',
+  email: 'email',
+  displayName: 'display_name',
+  bio: 'bio',
+  avatarUrl: 'avatar_url',
+};
 
 /**
  * @param {number} id
@@ -94,26 +105,38 @@ const UPDATABLE_FIELDS = ['username', 'email', 'displayName', 'bio', 'avatarUrl'
  * @returns the updated user record, or null if no user has that ID
  */
 export async function updateUser(id, changes) {
-  // TODO: Replace temporary user store with database update.
-  // Translate unique-constraint violations into DuplicateUserError as in createUser.
-  const user = mockUsers.find((candidate) => candidate.id === id);
-  if (!user) return null;
-  assertUnique(changes, id);
-  for (const field of UPDATABLE_FIELDS) {
-    if (changes[field] !== undefined) user[field] = changes[field];
+  const assignments = [];
+  const values = [];
+  for (const [field, column] of Object.entries(UPDATABLE_COLUMNS)) {
+    if (changes[field] === undefined) continue;
+    assignments.push(`${column} = ?`);
+    // Store empty display name / bio as NULL, matching new signups.
+    values.push(changes[field] === '' ? null : changes[field]);
   }
-  return copy(user);
+
+  if (assignments.length > 0) {
+    try {
+      await pool.execute(`UPDATE users SET ${assignments.join(', ')} WHERE user_id = ?`, [...values, id]);
+    } catch (err) {
+      rethrowDuplicate(err);
+    }
+  }
+  return findUserById(id);
 }
 
 /** @returns users with the given IDs (order not guaranteed; missing IDs skipped) */
 export async function findUsersByIds(ids) {
-  // TODO: Replace temporary user store with a database lookup of several users by ID.
-  const wanted = new Set(ids);
-  return mockUsers.filter((user) => wanted.has(user.id)).map(copy);
+  if (ids.length === 0) return [];
+  const placeholders = ids.map(() => '?').join(', ');
+  const [rows] = await pool.execute(`SELECT ${USER_COLUMNS} FROM users WHERE user_id IN (${placeholders})`, ids);
+  return rows.map(toUser);
 }
 
-/** @returns all users, newest first */
+/** @returns all active users, newest first */
 export async function listUsers() {
-  // TODO: Replace temporary user store with a database query (add paging once there are many users).
-  return mockUsers.map(copy).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  // TODO: Add paging once there are many users.
+  const [rows] = await pool.execute(
+    `SELECT ${USER_COLUMNS} FROM users WHERE account_status = 'active' ORDER BY created_at DESC, user_id DESC`,
+  );
+  return rows.map(toUser);
 }

@@ -1,6 +1,7 @@
 import express from 'express';
 import session from 'express-session';
 import { config } from './config.js';
+import { isDatabaseError, isDatabaseUnavailable, verifyDatabaseConnection } from './db.js';
 import authRoutes from './routes/authRoutes.js';
 import socialRoutes from './routes/socialRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -26,9 +27,10 @@ app.use(
     resave: false,
     saveUninitialized: false, // no cookie until someone actually logs in
     cookie: config.session.cookie,
-    // TEMPORARY: No `store` option means express-session's built-in MemoryStore,
-    // so sessions are also cleared on restart. Once the database exists, a
-    // persistent session store can be plugged in here (a team decision).
+    // No `store` option means express-session's built-in MemoryStore: sessions
+    // live in this process and are cleared on restart (users just log in again;
+    // their accounts are safe in MySQL). A MySQL-backed session store needs its
+    // own `sessions` table, which isn't in the team schema yet (a team decision).
   }),
 );
 
@@ -51,11 +53,30 @@ app.use((err, req, res, next) => {
   if (err.type === 'entity.too.large') {
     return res.status(413).json({ error: 'That request is too large.' });
   }
-  console.error(err);
+  if (isDatabaseUnavailable(err)) {
+    console.error(`[db] Database unavailable (${err.code}).`);
+    return res.status(503).json({ error: 'TuneBoxd can’t reach its database right now. Please try again shortly.' });
+  }
+  if (isDatabaseError(err)) {
+    // Log only the code and MySQL's message. Never the SQL, bound values or
+    // connection details, and never send any of it to the browser.
+    console.error(`[db] Query failed: ${err.code} ${err.sqlMessage ?? ''}`);
+  } else {
+    console.error(err);
+  }
   res.status(500).json({ error: 'Something went wrong. Please try again.' });
 });
 
+// Check the database before accepting requests, so "can't reach RDS" is
+// reported clearly at startup instead of showing up as a login bug later.
+try {
+  await verifyDatabaseConnection();
+  console.log('Database connection successful.');
+} catch (err) {
+  console.error(err.message);
+  process.exit(1);
+}
+
 app.listen(config.port, () => {
   console.log(`TuneBoxd API listening on http://localhost:${config.port}`);
-  console.log('NOTE: Using a TEMPORARY in-memory user store. Users and sessions reset when the server restarts.');
 });

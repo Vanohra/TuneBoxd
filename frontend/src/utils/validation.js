@@ -5,6 +5,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_PATTERN = /^[A-Za-z0-9_.]{3,30}$/;
 const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_MAX_LENGTH = 72;
+const EMAIL_MAX_LENGTH = 255;
 
 function usernameError(username) {
   if (!username.trim()) return 'Username cannot be blank.';
@@ -16,6 +17,7 @@ function usernameError(username) {
 
 function emailError(email) {
   if (!email.trim()) return 'Email cannot be blank.';
+  if (email.trim().length > EMAIL_MAX_LENGTH) return `Email must be ${EMAIL_MAX_LENGTH} characters or fewer.`;
   if (!EMAIL_PATTERN.test(email.trim())) return 'Please enter a valid email.';
   return null;
 }

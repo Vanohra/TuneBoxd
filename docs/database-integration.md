@@ -1,97 +1,81 @@
-# Database integration handoff (users, profiles, follows)
+# Database integration (users, auth, follows)
 
-Auth, sessions, profiles and follows currently run on **TEMPORARY in-memory
-storage**. This note is for whoever connects the real database. No schema,
-migrations, ORM models or DB dependencies were added, and the table design is
-entirely yours.
+The backend talks to MySQL on Amazon RDS (`music_review_app`). The schema in
+[`database/schema.sql`](../database/schema.sql) is the source of truth. The app
+never creates, alters or drops tables.
 
 ## Layering
 
 ```
-React UI (frontend/)                         unchanged by DB work
-   ↓ fetch /api/*
-routes → controllers                         unchanged
+React UI (frontend/)
+   ↓ fetch /api/*  (Vite proxy → :4000, session cookie)
+routes → controllers
    ↓
-services (authService, userService,          unchanged: validation, hashing,
-          socialService)                     duplicate checks, follow rules
+services (authService, userService, socialService)   validation, bcrypt, rules
    ↓
-repositories/userRepository.js               ← REPLACE the function bodies here
-repositories/followRepository.js             ← and here
+repositories/userRepository.js     ← all SQL for `users`
+repositories/followRepository.js   ← all SQL for `follows`
    ↓
-repositories/mockUserStore.js                ← TEMPORARY: delete when done
+src/db.js                          ← mysql2 connection pool (reads DB_* from .env)
+   ↓
+Amazon RDS → music_review_app
 ```
 
-Only the two repository files import `mockUserStore.js`.
+Only repository files import `db.js`. New features (reviews, ratings, lists, ...)
+should follow the same pattern: add a `xxxRepository.js` with the SQL, call it
+from a service, and protect write routes with `requireAuth`.
 
-## Users: `backend/src/repositories/userRepository.js`
+## Column mapping (users)
 
-Each function has a `TODO: Replace temporary user store with ...` comment.
+`userRepository.js` is the one place that converts between table columns and
+the camelCase record the rest of the app uses:
 
-| Function                                        | Must return / do                                                   |
-| ----------------------------------------------- | ------------------------------------------------------------------ |
-| `findUserById(id)`                              | user record or `null`                                              |
-| `findUserByUsername(username)`                  | user record or `null`, **case-insensitive**                        |
-| `findUserByEmail(email)`                        | user record or `null`, **case-insensitive**                        |
-| `findUsersByIds(ids)`                           | array of user records (any order, skip missing IDs)                |
-| `listUsers()`                                   | array of all users, newest first (add paging later)                |
-| `createUser({ username, email, passwordHash })` | insert; return the created record (DB generates `id`, `createdAt`) |
-| `updateUser(id, changes)`                       | update only the keys present in `changes` (`username`, `email`, `displayName`, `bio`, `avatarUrl`); return the updated record, or `null` if no such user |
+| `users` column   | App field       | Notes                                               |
+| ---------------- | --------------- | --------------------------------------------------- |
+| `user_id`        | `id`            | Stored in `req.session.userId`                      |
+| `username`       | `username`      | Case-insensitive unique (utf8mb4_unicode_ci)        |
+| `email`          | `email`         | Lowercased before insert; case-insensitive unique   |
+| `password_hash`  | `passwordHash`  | bcrypt (`$2b$10$...`). Never leaves the backend     |
+| `display_name`   | `displayName`   | NULL ↔ `''`                                         |
+| `bio`            | `bio`           | NULL ↔ `''`                                         |
+| `avatar_url`     | `avatarUrl`     | see the note below                                  |
+| `role`           | `role`          | Never set by the app; signup gets the default `user` |
+| `account_status` | `accountStatus` | `suspended` blocks login and ends existing sessions |
+| `created_at`     | `createdAt`     |                                                     |
 
-**Record shape the app expects** (map your column names to this inside the repository):
+`utils/safeUser.js` decides what goes to the browser: `toSafeUser` (yourself:
+adds `email`, `role`) and `toPublicUser` (others). Neither includes the hash.
 
-```js
-{ id, username, email, passwordHash, displayName, bio, avatarUrl, createdAt }
-```
+## Rules the code relies on
 
-- `id` is stored in the session (`req.session.userId`) and compared with `===`, so
-  keep it the same type every time (number or string, just consistently).
-- `createdAt` should be an ISO string or a `Date` (the frontend shows "Member since ...").
-- `passwordHash` is a bcrypt string (≤ 60 chars, e.g. `$2b$10$...`). Store it as-is.
-- `displayName` (≤ 50 chars) and `bio` (≤ 160 chars) are strings; return `''` when empty.
-- `avatarUrl` is `null` or a string. **Right now it holds a small base64 data URL**
-  (a 256×256 JPEG, roughly 15–40 KB) because there is no file storage yet. You can
-  store it as text, or move images to file/object storage and keep only a URL in
-  the database. The frontend just puts whatever string it gets into `<img src>`.
-- Keep every function `async`.
+- Every query uses `?` placeholders via `pool.execute` (prepared statements).
+- `INSERT INTO users` only sets `username, email, password_hash`; `role` and
+  `account_status` come from the schema defaults, so a client can't make itself admin.
+- MySQL's `ER_DUP_ENTRY` on `username`/`email` becomes a friendly 409.
+- Connection-type errors (RDS unreachable, bad credentials) become a 503
+  "can't reach its database" response. Other SQL errors become a generic 500. Logs
+  contain only the MySQL error code and message, never SQL text, values or credentials.
 
-**Uniqueness:** services already check for duplicates before writing. A unique
-constraint on username and email (case-insensitive) is still recommended. When the
-DB rejects a duplicate, throw `new DuplicateUserError('username')` or
-`new DuplicateUserError('email')` (exported from the repository), and the services
-turn it into the friendly 409 message.
+## Schema note: `users.avatar_url` is VARCHAR(500)
 
-Emails are already lowercased before they reach the repository. Usernames keep the
-case the user typed, so username lookups need to be case-insensitive.
+The Edit Profile page sends the profile picture as a base64 data URL (a resized
+256×256 JPEG, roughly 15–40 KB). That cannot fit in 500 characters, so
+`utils/validation.js` currently rejects uploads with "Profile picture uploads
+aren't available yet." Display name, bio and everything else work normally.
 
-## Follows: `backend/src/repositories/followRepository.js`
+Two ways to fix it (team decision, not done automatically):
 
-A follow means "`followerId` follows `followingId`". Everything uses user IDs.
+1. **Minimal schema change** (simplest for now):
+   ```sql
+   ALTER TABLE users MODIFY avatar_url MEDIUMTEXT NULL;
+   ```
+   then set `AVATAR_MAX_LENGTH` in `backend/src/utils/validation.js` back to `350_000`.
+2. **Keep the schema** and upload images to object storage (e.g. S3), storing
+   only the resulting URL (fits in 500 chars) in `avatar_url`.
 
-| Function                                    | Must return / do                                         |
-| ------------------------------------------- | -------------------------------------------------------- |
-| `isFollowing(followerId, followingId)`      | boolean                                                  |
-| `addFollow(followerId, followingId)`        | insert; **no-op if it already exists**                   |
-| `removeFollow(followerId, followingId)`     | delete; no-op if it doesn't exist                        |
-| `countFollowers(userId)` / `countFollowing(userId)` | numbers                                          |
-| `listFollowerIds(userId)` / `listFollowingIds(userId)` | arrays of user IDs, most recent first         |
-| `filterFollowedIds(followerId, candidateIds)` | the subset of `candidateIds` that `followerId` follows |
+## Sessions
 
-The service layer already blocks following yourself and checks that both users
-exist. A unique (follower, following) pair is recommended in the database.
-
-## Other places that mention temporary storage
-
-- `backend/src/repositories/mockUserStore.js`: delete once both repositories use the DB.
-  It seeds five demo accounts (`demo`, `alexr`, `musicmatt`, `sarahv`, `john_doe`)
-  and a few follows. Recreate them in your seed data if you want to keep them.
-- `backend/src/services/socialService.js`: `stats.reviews` is hard-coded to `0`
-  (`TODO`) until reviews exist.
-- `backend/src/server.js`: sessions use express-session's default **MemoryStore**
-  (also cleared on restart). Optionally, plug in a persistent session store via the
-  `store` option once the DB exists. No code elsewhere would change.
-
-## Things you do NOT need to touch
-
-Password hashing (`authService.js`), validation (`utils/validation.js`), session
-creation/destruction (`authController.js`), the `requireAuth` middleware, the
-follow rules in `socialService.js`, and the whole frontend.
+Sessions use express-session's in-memory store: only `userId` is stored,
+restarting the backend logs everyone out, and accounts are unaffected. A
+persistent MySQL session store (e.g. `express-mysql-session`) would need its own
+`sessions` table, which isn't in the team schema yet.

@@ -18,6 +18,12 @@ export const DUPLICATE_MESSAGES = {
   email: 'An account with this email already exists.',
 };
 const INVALID_CREDENTIALS = 'Incorrect username/email or password.';
+const ACCOUNT_SUSPENDED = 'This account has been suspended.';
+
+/** Throws 403 unless users.account_status is 'active'. */
+export function assertAccountActive(user) {
+  if (user.accountStatus !== 'active') throw new ServiceError(403, ACCOUNT_SUSPENDED);
+}
 
 // Compared against when no user matches, so a login attempt takes about the same
 // time whether or not the account exists (this avoids leaking which accounts exist).
@@ -42,6 +48,8 @@ export async function registerUser(input) {
   const passwordHash = await bcrypt.hash(values.password, BCRYPT_SALT_ROUNDS);
 
   try {
+    // Only these three fields are passed on. Anything else in the request body
+    // (e.g. role: 'admin') is ignored; role/account_status use the schema defaults.
     const user = await userRepository.createUser({
       username: values.username,
       email: values.email,
@@ -74,5 +82,8 @@ export async function authenticate(input) {
     // Same message whether the account is missing or the password is wrong.
     throw new ServiceError(401, INVALID_CREDENTIALS);
   }
+  // Checked only after the password matched, so this can't be used to probe
+  // which accounts exist or are suspended.
+  assertAccountActive(user);
   return toSafeUser(user);
 }

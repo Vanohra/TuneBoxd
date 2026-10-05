@@ -5,6 +5,7 @@ export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const USERNAME_PATTERN = /^[A-Za-z0-9_.]{3,30}$/;
 export const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_MAX_LENGTH = 72; // bcrypt only uses the first 72 bytes
+const EMAIL_MAX_LENGTH = 255; // users.email is VARCHAR(255)
 
 const MESSAGES = {
   required: 'All fields are required.',
@@ -12,6 +13,7 @@ const MESSAGES = {
   usernameFormat: 'Username must be 3–30 characters: letters, numbers, underscores or periods.',
   emailBlank: 'Email cannot be blank.',
   emailFormat: 'Please enter a valid email.',
+  emailLength: `Email must be ${EMAIL_MAX_LENGTH} characters or fewer.`,
   passwordBlank: 'Password cannot be blank.',
   passwordLength: `Password must be ${PASSWORD_MIN_LENGTH}–${PASSWORD_MAX_LENGTH} characters.`,
   passwordMismatch: 'Passwords do not match.',
@@ -26,6 +28,7 @@ function checkUsername(username, fieldErrors) {
 
 function checkEmail(email, fieldErrors) {
   if (!email) fieldErrors.email = MESSAGES.emailBlank;
+  else if (email.length > EMAIL_MAX_LENGTH) fieldErrors.email = MESSAGES.emailLength;
   else if (!EMAIL_PATTERN.test(email)) fieldErrors.email = MESSAGES.emailFormat;
 }
 
@@ -68,7 +71,10 @@ export const BIO_MAX_LENGTH = 160;
 // Avatars arrive as small base64 data URLs (the frontend resizes them to 256×256).
 // SVG is deliberately excluded.
 const AVATAR_PATTERN = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/;
-export const AVATAR_MAX_LENGTH = 350_000; // ~256 KB of image data
+// users.avatar_url is VARCHAR(500), which is far too small for a data URL
+// (~15–40 KB). Until images move to file storage (or the column is widened),
+// uploads are rejected here with a friendly message instead of a DB error.
+export const AVATAR_MAX_LENGTH = 500;
 
 /**
  * Validates and normalizes profile edits.
@@ -99,7 +105,7 @@ export function validateProfileUpdate(input = {}) {
   } else if (input.avatarUrl !== undefined) {
     avatarUrl = asString(input.avatarUrl);
     if (avatarUrl.length > AVATAR_MAX_LENGTH) {
-      fieldErrors.avatarUrl = 'Profile picture is too large. Please choose a smaller image.';
+      fieldErrors.avatarUrl = 'Profile picture uploads aren’t available yet. Please try again later.';
     } else if (!AVATAR_PATTERN.test(avatarUrl)) {
       fieldErrors.avatarUrl = 'Profile picture must be a PNG, JPEG or WebP image.';
     }

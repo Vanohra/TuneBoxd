@@ -1,13 +1,15 @@
 /**
  * Picks only the fields that are safe to send to the signed-in user about
  * themselves. Always pass user records through this before responding.
- * Never send passwordHash.
+ * Never send passwordHash. `role` is informational for the UI only; the server
+ * always re-reads it from the database before authorizing anything.
  */
 export function toSafeUser(user) {
   if (!user) return null;
   return {
     ...toPublicUser(user),
     email: user.email,
+    role: user.role,
   };
 }
 
