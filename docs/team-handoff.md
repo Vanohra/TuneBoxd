@@ -167,7 +167,7 @@ that's the firewall: your IP isn't allowed. Same fix as `ETIMEDOUT` below.
 
 The live site runs on **Render** and is wired to the `main` branch: **every push (or merged
 pull request) to `main` automatically rebuilds and redeploys the site**. Live URL:
-**https://tuneboxd.onrender.com** *(Vanohra: confirm/replace with the real URL)*.
+**https://tuneboxd.onrender.com**.
 
 Suggested workflow:
 
