@@ -76,6 +76,12 @@ so the browser sees one origin and the session cookie just works (no CORS setup)
 | `PORT`           | `4000`                      |                                             |
 | `NODE_ENV`       | unset                       | `production` turns on `Secure` cookies      |
 | `MUSICBRAINZ_CONTACT` | project GitHub URL     | Email/URL in the MusicBrainz User-Agent     |
+| `DB_SSL`         | unset                       | `true` = TLS to RDS (set on Render)         |
+
+### Deploying
+
+TuneBoxd deploys to Render as one web service (Express serves the API and the built
+React app). See [docs/deployment-render.md](docs/deployment-render.md).
 
 ### Tests
 

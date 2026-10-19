@@ -12,6 +12,8 @@
     "build": "npm --prefix frontend run build",
     "preview": "npm --prefix frontend run preview",
     "start:backend": "npm --prefix backend start",
+    "render-build": "npm ci --prefix backend --omit=dev && npm ci --prefix frontend --include=dev && npm --prefix frontend run build",
+    "start": "npm --prefix backend start",
     "test": "npm --prefix backend test"
   },
   "engines": {

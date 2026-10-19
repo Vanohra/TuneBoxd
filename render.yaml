@@ -1,0 +1,36 @@
+# Render Blueprint: one web service that runs the Express API and serves the
+# built React app from the same origin. See docs/deployment-render.md.
+#
+# Secrets are NOT stored here. Values marked `sync: false` are typed into the
+# Render dashboard when the Blueprint is created.
+services:
+  - type: web
+    name: tuneboxd
+    runtime: node
+    plan: free
+    region: virginia # same AWS region as the RDS instance (us-east-1)
+    branch: main
+    buildCommand: npm run render-build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: DB_SSL
+        value: "true"
+      - key: DB_NAME
+        value: music_review_app
+      - key: DB_PORT
+        value: "3306"
+      - key: SESSION_SECRET
+        generateValue: true # Render generates a random secret
+      - key: DB_HOST
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: MUSICBRAINZ_CONTACT
+        sync: false

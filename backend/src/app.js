@@ -3,6 +3,8 @@
  * server.js checks the database and starts listening; tests import this file
  * directly and listen on a random port.
  */
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import session from 'express-session';
 import { config } from './config.js';
@@ -53,9 +55,29 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/diary', diaryRoutes);
 
+// Used by Render's health check. Deliberately doesn't touch the database, so a
+// brief RDS hiccup doesn't make the platform restart the app.
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true });
+});
+
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Not found.' });
 });
+
+// In production (e.g. on Render) the built React app is served by this same
+// server, so the browser sees one origin: no CORS, and the SameSite=Lax session
+// cookie works as it does locally through the Vite proxy. Locally, with no
+// frontend/dist build, this is skipped and Vite serves the frontend as before.
+const frontendDist = fileURLToPath(new URL('../../frontend/dist/', import.meta.url));
+if (existsSync(frontendDist + 'index.html')) {
+  app.use(express.static(frontendDist));
+  // Any other GET is a client-side route (/profile, /album/:id, ...): send the
+  // React app and let React Router handle it.
+  app.get('/{*splat}', (req, res) => {
+    res.sendFile(frontendDist + 'index.html');
+  });
+}
 
 // Central error handler. Express 5 forwards errors from async handlers here.
 app.use((err, req, res, next) => {

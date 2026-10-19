@@ -14,6 +14,7 @@ export const pool = mysql.createPool({
   user: config.db.user,
   password: config.db.password,
   database: config.db.database,
+  ssl: config.db.ssl,
   waitForConnections: true,
   connectionLimit: 10,
   connectTimeout: 10_000,
@@ -55,7 +56,7 @@ const HINTS = {
   ENOTFOUND: 'Check DB_HOST in .env (the RDS endpoint hostname).',
   EAI_AGAIN: 'Check DB_HOST in .env and your internet connection.',
   ETIMEDOUT:
-    'The RDS instance did not answer. Check that it is running, publicly accessible, and that its security group allows your IP on DB_PORT.',
+    'The RDS instance did not answer. Check that it is running, publicly accessible, and that its security group allows your IP (or Render\'s outbound IP ranges) on DB_PORT.',
   ECONNREFUSED: 'Connection refused. Check DB_HOST and DB_PORT in .env.',
 };
 

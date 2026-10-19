@@ -35,6 +35,10 @@ export const config = {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME || 'music_review_app',
+    // DB_SSL=true encrypts the connection to RDS and verifies its certificate
+    // (mysql2's built-in Amazon RDS CA bundle). Set it on hosted deployments,
+    // where traffic to RDS crosses the public internet.
+    ssl: process.env.DB_SSL === 'true' ? 'Amazon RDS' : undefined,
   },
   // MusicBrainz asks every client to send a descriptive User-Agent with a way to
   // contact the developers: https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting
