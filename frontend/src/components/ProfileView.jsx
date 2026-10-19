@@ -1,14 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { fetchUserDiary } from '../api/diary.js';
+import { fetchUserReviews } from '../api/reviews.js';
 import { fetchFollowers, fetchFollowing, fetchProfile } from '../api/users.js';
 import Avatar from './Avatar.jsx';
+import CoverArt from './CoverArt.jsx';
+import DiaryList from './DiaryList.jsx';
 import FollowButton from './FollowButton.jsx';
-import { CalendarIcon, MailIcon } from './Icons.jsx';
+import { CalendarIcon, LockIcon, MailIcon } from './Icons.jsx';
+import ReviewCard from './ReviewCard.jsx';
+import { StarRating } from './StarRating.jsx';
+import { EmptyState, ErrorState, Loading } from './Status.jsx';
 import UserList from './UserList.jsx';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'reviews', label: 'Reviews' },
+  { id: 'diary', label: 'Diary' },
   { id: 'lists', label: 'Lists' },
   { id: 'following', label: 'Following' },
   { id: 'followers', label: 'Followers' },
@@ -17,6 +25,155 @@ const TABS = [
 function formatMemberSince(isoDate) {
   if (!isoDate) return null;
   return new Date(isoDate).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+}
+
+/** Loads a user's reviews once and shares them between the Overview and Reviews tabs. */
+function useUserReviews(username) {
+  const [reviews, setReviews] = useState(null);
+  const [error, setError] = useState(null);
+  const load = useCallback(() => {
+    setError(null);
+    fetchUserReviews(username)
+      .then(setReviews)
+      .catch(setError);
+  }, [username]);
+  useEffect(() => {
+    setReviews(null);
+    load();
+  }, [load]);
+  return { reviews, error, reload: load };
+}
+
+function RecentlyReviewed({ reviews, error, isOwnProfile, username }) {
+  return (
+    <section className="card">
+      <h2 className="section-title">Recently Reviewed</h2>
+      {error ? (
+        <p className="empty-text">{error.message}</p>
+      ) : !reviews ? (
+        <Loading inline />
+      ) : reviews.length === 0 ? (
+        <>
+          <div className="album-row album-row-empty" aria-hidden="true">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="album-card">
+                <div className="album-cover album-cover-empty" />
+                <span className="skeleton skeleton-title" />
+                <span className="skeleton skeleton-sub" />
+              </div>
+            ))}
+          </div>
+          <p className="empty-text">
+            {isOwnProfile ? 'You haven’t' : `@${username} hasn’t`} reviewed anything yet.
+            {isOwnProfile && (
+              <>
+                {' '}
+                <Link to="/search">Find an album to review →</Link>
+              </>
+            )}
+          </p>
+        </>
+      ) : (
+        <div className="album-row album-row-filled">
+          {reviews.slice(0, 5).map((review) => (
+            <Link key={review.id} to={`/reviews/${review.id}`} className="album-card album-link">
+              <CoverArt src={review.target.coverUrl} seed={review.target.mbid} alt={`${review.target.title} cover`} />
+              <span className="album-card-title">{review.target.title}</span>
+              <span className="album-card-sub">{review.target.artistName}</span>
+              <StarRating rating={review.rating} size="sm" />
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ReviewsPanel({ reviews, error, reload, isOwnProfile, username }) {
+  return (
+    <section className="card">
+      <h2 className="section-title">Reviews</h2>
+      {error ? (
+        <ErrorState title="Couldn’t load reviews" message={error.message} onRetry={reload} />
+      ) : !reviews ? (
+        <Loading inline label="Loading reviews…" />
+      ) : reviews.length === 0 ? (
+        <EmptyState
+          title="No reviews yet"
+          action={
+            isOwnProfile && (
+              <Link to="/search" className="btn btn-outline btn-sm">
+                Find music to review
+              </Link>
+            )
+          }
+        >
+          {isOwnProfile ? 'Reviews you write will show up here.' : `@${username} hasn’t written any reviews yet.`}
+        </EmptyState>
+      ) : (
+        <div className="review-list">
+          {reviews.map((review) => (
+            <ReviewCard key={review.id} review={review} showTarget onDeleted={reload} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Diary tab. Private diaries come back from the API as 403, never as data. */
+function DiaryPanel({ username, isOwnProfile }) {
+  const [state, setState] = useState({ status: 'loading' });
+
+  useEffect(() => {
+    let cancelled = false;
+    setState({ status: 'loading' });
+    fetchUserDiary(username)
+      .then((data) => !cancelled && setState({ status: 'done', data }))
+      .catch((error) => !cancelled && setState({ status: 'error', error }));
+    return () => {
+      cancelled = true;
+    };
+  }, [username]);
+
+  return (
+    <section className="card">
+      <div className="card-header">
+        <h2 className="section-title">Diary</h2>
+        {isOwnProfile && (
+          <Link to="/diary" className="btn btn-outline btn-sm">
+            Manage diary
+          </Link>
+        )}
+      </div>
+      {state.status === 'loading' && <Loading inline label="Loading diary…" />}
+      {state.status === 'error' &&
+        (state.error.status === 403 ? (
+          <div className="empty-state">
+            <LockIcon size={28} />
+            <p className="empty-state-title">This diary is private</p>
+            <p className="empty-text">Only @{username} can see their listening history.</p>
+          </div>
+        ) : (
+          <ErrorState title="Couldn’t load diary" message={state.error.message} />
+        ))}
+      {state.status === 'done' &&
+        (state.data.entries.length === 0 ? (
+          <EmptyState title="No diary entries yet">
+            {isOwnProfile ? 'Log what you listen to from any album page.' : `@${username} hasn’t logged any listens yet.`}
+          </EmptyState>
+        ) : (
+          <>
+            {isOwnProfile && state.data.visibility === 'private' && (
+              <p className="muted small private-note">
+                <LockIcon size={14} /> Your diary is private. Only you can see this.
+              </p>
+            )}
+            <DiaryList entries={state.data.entries} />
+          </>
+        ))}
+    </section>
+  );
 }
 
 function EmptyPanel({ title, children }) {
@@ -79,6 +236,7 @@ export default function ProfileView({ username, email }) {
 
   const [profile, setProfile] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  const userReviews = useUserReviews(username);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -122,7 +280,8 @@ export default function ProfileView({ username, email }) {
   const { stats } = profile;
   const memberSince = formatMemberSince(profile.createdAt);
   const statItems = [
-    { id: 'reviews', value: stats.reviews, label: 'Reviews' },
+    { id: 'reviews', value: stats.reviews, label: stats.reviews === 1 ? 'Review' : 'Reviews' },
+    ...(stats.diaryEntries == null ? [] : [{ id: 'diary', value: stats.diaryEntries, label: 'Diary' }]),
     { id: 'followers', value: stats.followers, label: stats.followers === 1 ? 'Follower' : 'Followers' },
     { id: 'following', value: stats.following, label: 'Following' },
   ];
@@ -197,27 +356,22 @@ export default function ProfileView({ username, email }) {
       </section>
 
       {activeTab === 'overview' && (
-        <section className="card">
-          <h2 className="section-title">Recently Reviewed</h2>
-          <div className="album-row album-row-empty" aria-hidden="true">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <div key={i} className="album-card">
-                <div className="album-cover album-cover-empty" />
-                <span className="skeleton skeleton-title" />
-                <span className="skeleton skeleton-sub" />
-              </div>
-            ))}
-          </div>
-          <p className="empty-text">
-            {profile.isOwnProfile ? 'You haven’t' : `@${profile.username} hasn’t`} reviewed any albums yet.
-            Album reviews are coming soon.
-          </p>
-        </section>
+        <RecentlyReviewed {...userReviews} isOwnProfile={profile.isOwnProfile} username={profile.username} />
       )}
 
       {activeTab === 'reviews' && (
-        <EmptyPanel title="Reviews">No reviews yet. Writing album reviews is coming soon.</EmptyPanel>
+        <ReviewsPanel
+          {...userReviews}
+          reload={() => {
+            userReviews.reload();
+            loadProfile();
+          }}
+          isOwnProfile={profile.isOwnProfile}
+          username={profile.username}
+        />
       )}
+
+      {activeTab === 'diary' && <DiaryPanel username={profile.username} isOwnProfile={profile.isOwnProfile} />}
 
       {activeTab === 'lists' && <EmptyPanel title="Lists">No lists yet. Custom music lists are coming soon.</EmptyPanel>}
 

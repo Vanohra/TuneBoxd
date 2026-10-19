@@ -1,15 +1,11 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { CommunityIcon, HomeIcon, LibraryIcon, ListsIcon, SearchIcon, UserIcon } from './Icons.jsx';
+import { CommunityIcon, DiaryIcon, HomeIcon, ListsIcon, SearchIcon, UserIcon } from './Icons.jsx';
 import Logo from './Logo.jsx';
 
 // Sections planned for later sprints. Shown so the layout matches the design,
 // but not clickable until those features exist.
-const COMING_SOON = [
-  { label: 'Search', Icon: SearchIcon },
-  { label: 'My Library', Icon: LibraryIcon },
-  { label: 'Lists', Icon: ListsIcon },
-];
+const COMING_SOON = [{ label: 'Lists', Icon: ListsIcon }];
 
 export default function Sidebar() {
   const { user } = useAuth();
@@ -22,6 +18,16 @@ export default function Sidebar() {
           <HomeIcon />
           <span>Home</span>
         </NavLink>
+        <NavLink to="/search" className="side-link">
+          <SearchIcon />
+          <span>Search</span>
+        </NavLink>
+        {user && (
+          <NavLink to="/diary" className="side-link">
+            <DiaryIcon />
+            <span>My Diary</span>
+          </NavLink>
+        )}
         {user && (
           <NavLink to="/profile" className="side-link">
             <UserIcon />

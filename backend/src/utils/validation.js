@@ -125,3 +125,137 @@ export function validateLogin(input = {}) {
   const error = !identifier || !password ? MESSAGES.required : null;
   return { values: { identifier, password }, error };
 }
+
+// ---------- Sprint 3: music, reviews, diary, comments ----------
+
+const MBID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** MusicBrainz IDs are UUIDs. Checked before any MusicBrainz or MySQL call. */
+export function isMbid(value) {
+  return typeof value === 'string' && MBID_PATTERN.test(value);
+}
+
+/** Positive integer from a route parameter, or null. */
+export function parseId(value) {
+  const id = Number(value);
+  return Number.isSafeInteger(id) && id > 0 && String(id) === String(value) ? id : null;
+}
+
+export const TARGET_TYPES = ['album', 'song'];
+export const REVIEW_MAX_LENGTH = 5000;
+export const COMMENT_MAX_LENGTH = 1000;
+export const DIARY_NOTES_MAX_LENGTH = 1000;
+// Ratings are 0.5–5 stars in half-star steps everywhere (ratings.score is DECIMAL(2,1)
+// with CHECK score BETWEEN 0.5 AND 5.0).
+export const RATING_MIN = 0.5;
+export const RATING_MAX = 5;
+
+/**
+ * Normalizes user-written text: unifies line endings, removes invisible control
+ * characters and trims. The text is stored as-is otherwise; React escapes it
+ * when rendering, so HTML in a review shows up as literal text (no XSS).
+ */
+export function cleanText(value) {
+  return asString(value)
+    .replace(/\r\n?/g, '\n')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .trim();
+}
+
+function checkTarget(input, fieldErrors) {
+  const targetType = asString(input.targetType);
+  const mbid = asString(input.mbid).trim().toLowerCase();
+  if (!TARGET_TYPES.includes(targetType)) fieldErrors.targetType = 'Choose an album or song.';
+  else if (!isMbid(mbid)) fieldErrors.mbid = 'That isn’t a valid music ID.';
+  return { targetType, mbid };
+}
+
+function checkRating(value, fieldErrors) {
+  const rating = typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
+  if (rating === undefined || rating === null || rating === '') {
+    fieldErrors.rating = 'Please choose a rating.';
+    return null;
+  }
+  if (typeof rating !== 'number' || !Number.isFinite(rating) || rating < RATING_MIN || rating > RATING_MAX || (rating * 2) % 1 !== 0) {
+    fieldErrors.rating = `Rating must be between ${RATING_MIN} and ${RATING_MAX} stars, in half-star steps.`;
+    return null;
+  }
+  return rating;
+}
+
+function checkReviewText(value, fieldErrors) {
+  const text = cleanText(value);
+  if (!text) fieldErrors.text = 'Review text cannot be empty.';
+  else if (text.length > REVIEW_MAX_LENGTH) fieldErrors.text = `Reviews must be ${REVIEW_MAX_LENGTH} characters or fewer.`;
+  return text;
+}
+
+const firstError = (fieldErrors) => Object.values(fieldErrors)[0] ?? null;
+
+/** POST /api/reviews body: { targetType, mbid, text, rating } */
+export function validateNewReview(input = {}) {
+  const fieldErrors = {};
+  const { targetType, mbid } = checkTarget(input, fieldErrors);
+  const text = checkReviewText(input.text, fieldErrors);
+  const rating = checkRating(input.rating, fieldErrors);
+  return { values: { targetType, mbid, text, rating }, fieldErrors, error: firstError(fieldErrors) };
+}
+
+/** PATCH /api/reviews/:id body: { text, rating } (both required; the form always sends both) */
+export function validateReviewUpdate(input = {}) {
+  const fieldErrors = {};
+  const text = checkReviewText(input.text, fieldErrors);
+  const rating = checkRating(input.rating, fieldErrors);
+  return { values: { text, rating }, fieldErrors, error: firstError(fieldErrors) };
+}
+
+export function validateComment(input = {}) {
+  const fieldErrors = {};
+  const text = cleanText(input.text);
+  if (!text) fieldErrors.text = 'Comment cannot be empty.';
+  else if (text.length > COMMENT_MAX_LENGTH) fieldErrors.text = `Comments must be ${COMMENT_MAX_LENGTH} characters or fewer.`;
+  return { values: { text }, fieldErrors, error: firstError(fieldErrors) };
+}
+
+const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * "YYYY-MM-DD" listening date: a real calendar date, not before 1900 and not
+ * in the future. One day of slack covers users whose local date is ahead of UTC.
+ */
+function checkListenedOn(value, fieldErrors) {
+  const listenedOn = asString(value).trim();
+  const match = DATE_PATTERN.exec(listenedOn);
+  const date = match ? new Date(Date.UTC(+match[1], +match[2] - 1, +match[3])) : null;
+  if (!listenedOn) fieldErrors.listenedOn = 'Please choose the date you listened.';
+  else if (!date || date.toISOString().slice(0, 10) !== listenedOn) fieldErrors.listenedOn = 'Please enter a valid date.';
+  else if (+match[1] < 1900) fieldErrors.listenedOn = 'Listening date must be in 1900 or later.';
+  else if (date.getTime() > Date.now() + 24 * 60 * 60 * 1000) fieldErrors.listenedOn = 'Listening date can’t be in the future.';
+  return listenedOn;
+}
+
+function checkNotes(value, fieldErrors) {
+  const notes = cleanText(value);
+  if (notes.length > DIARY_NOTES_MAX_LENGTH) fieldErrors.notes = `Notes must be ${DIARY_NOTES_MAX_LENGTH} characters or fewer.`;
+  return notes;
+}
+
+/** POST /api/diary body: { targetType, mbid, listenedOn, notes? } */
+export function validateNewDiaryEntry(input = {}) {
+  const fieldErrors = {};
+  const { targetType, mbid } = checkTarget(input, fieldErrors);
+  const listenedOn = checkListenedOn(input.listenedOn, fieldErrors);
+  const notes = checkNotes(input.notes, fieldErrors);
+  return { values: { targetType, mbid, listenedOn, notes }, fieldErrors, error: firstError(fieldErrors) };
+}
+
+/** PATCH /api/diary/:id body: { listenedOn, notes } */
+export function validateDiaryUpdate(input = {}) {
+  const fieldErrors = {};
+  const listenedOn = checkListenedOn(input.listenedOn, fieldErrors);
+  const notes = checkNotes(input.notes, fieldErrors);
+  return { values: { listenedOn, notes }, fieldErrors, error: firstError(fieldErrors) };
+}
+
+export const DIARY_VISIBILITIES = ['public', 'private'];

@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "TuneBoxd API: authentication, sessions, profiles and follows backed by MySQL (Amazon RDS).",
+  "description": "TuneBoxd API: auth, profiles, follows, music discovery (MusicBrainz), reviews, comments and listening diary backed by MySQL (Amazon RDS).",
   "scripts": {
     "dev": "node --watch src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "migrate": "node scripts/migrate.js",
+    "test": "node --test --test-concurrency=1 --test-reporter=spec test/*.test.js"
   },
   "engines": {
     "node": ">=20"

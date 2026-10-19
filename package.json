@@ -1,0 +1,20 @@
+{
+  "name": "tuneboxd",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TuneBoxd: run the backend (backend/) and frontend (frontend/) from the repository root.",
+  "scripts": {
+    "setup": "cd backend && npm install && cd ../frontend && npm install",
+    "dev": "node scripts/dev.mjs",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "migrate": "npm --prefix backend run migrate",
+    "build": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview",
+    "start:backend": "npm --prefix backend start",
+    "test": "npm --prefix backend test"
+  },
+  "engines": {
+    "node": ">=20.12"
+  }
+}

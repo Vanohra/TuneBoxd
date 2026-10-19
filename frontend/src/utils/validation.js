@@ -68,3 +68,44 @@ export function validateLogin({ identifier, password }) {
   if (!identifier.trim() || !password) return { error: 'All fields are required.', fieldErrors: {} };
   return { error: null, fieldErrors: {} };
 }
+
+// Sprint 3: reviews, comments, diary (mirrors backend/src/utils/validation.js).
+
+export const REVIEW_MAX_LENGTH = 5000;
+export const COMMENT_MAX_LENGTH = 1000;
+export const DIARY_NOTES_MAX_LENGTH = 1000;
+
+export function validateReview({ text, rating }) {
+  const fieldErrors = {
+    rating: rating ? null : 'Please choose a rating.',
+    text: !text.trim()
+      ? 'Review text cannot be empty.'
+      : text.trim().length > REVIEW_MAX_LENGTH
+        ? `Reviews must be ${REVIEW_MAX_LENGTH} characters or fewer.`
+        : null,
+  };
+  return result(fieldErrors, false);
+}
+
+/** Returns an error message, or null when the comment is OK. */
+export function validateCommentText(text) {
+  if (!text.trim()) return 'Comment cannot be empty.';
+  if (text.trim().length > COMMENT_MAX_LENGTH) return `Comments must be ${COMMENT_MAX_LENGTH} characters or fewer.`;
+  return null;
+}
+
+/** `today` is the local "YYYY-MM-DD" date; "YYYY-MM-DD" strings compare correctly as text. */
+export function validateDiaryEntry({ listenedOn, notes }, today) {
+  const fieldErrors = {
+    listenedOn: !listenedOn
+      ? 'Please choose the date you listened.'
+      : listenedOn > today
+        ? 'Listening date can’t be in the future.'
+        : listenedOn < '1900-01-01'
+          ? 'Listening date must be in 1900 or later.'
+          : null,
+    notes:
+      notes.trim().length > DIARY_NOTES_MAX_LENGTH ? `Notes must be ${DIARY_NOTES_MAX_LENGTH} characters or fewer.` : null,
+  };
+  return result(fieldErrors, false);
+}

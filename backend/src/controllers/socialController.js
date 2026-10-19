@@ -1,3 +1,5 @@
+import * as diaryService from '../services/diaryService.js';
+import * as reviewService from '../services/reviewService.js';
 import * as socialService from '../services/socialService.js';
 
 // Public routes still use the session (if any) to mark "following" state.
@@ -31,4 +33,14 @@ export async function follow(req, res) {
 // DELETE /api/users/:username/follow (requireAuth)
 export async function unfollow(req, res) {
   res.json({ profile: await socialService.unfollow(req.currentUser.id, req.params.username) });
+}
+
+// GET /api/users/:username/reviews
+export async function listReviews(req, res) {
+  res.json({ reviews: await reviewService.listByUsername(req.params.username, viewerIdOf(req)) });
+}
+
+// GET /api/users/:username/diary (403 when private and you aren't the owner)
+export async function getDiary(req, res) {
+  res.json(await diaryService.getDiaryForUsername(req.params.username, viewerIdOf(req)));
 }

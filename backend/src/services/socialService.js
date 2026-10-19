@@ -5,7 +5,9 @@
  * `viewerId` is the signed-in user's ID, or null for logged-out visitors. It
  * decides `isFollowing` / `isOwnProfile` flags and never grants extra data.
  */
+import * as diaryRepository from '../repositories/diaryRepository.js';
 import * as followRepository from '../repositories/followRepository.js';
+import * as reviewRepository from '../repositories/reviewRepository.js';
 import * as userRepository from '../repositories/userRepository.js';
 import { ServiceError } from '../utils/errors.js';
 import { toPublicUser } from '../utils/safeUser.js';
@@ -28,21 +30,27 @@ async function toUserCards(ids, viewerId) {
 
 export async function getProfile(username, viewerId) {
   const user = await requireUserByUsername(username);
-  const [followers, following, isFollowing] = await Promise.all([
+  const [followers, following, isFollowing, reviews, diaryEntries, diaryVisibility] = await Promise.all([
     followRepository.countFollowers(user.id),
     followRepository.countFollowing(user.id),
     viewerId ? followRepository.isFollowing(viewerId, user.id) : false,
+    reviewRepository.countReviewsByUser(user.id),
+    diaryRepository.countEntriesByUser(user.id),
+    diaryRepository.getDiaryVisibility(user.id),
   ]);
+  const isOwnProfile = viewerId === user.id;
   return {
     ...toPublicUser(user),
     stats: {
-      // TODO: Replace with the user's real review count once reviews exist.
-      reviews: 0,
+      reviews,
+      // Private diaries don't reveal even how many entries they have.
+      diaryEntries: diaryVisibility === 'public' || isOwnProfile ? diaryEntries : null,
       followers,
       following,
     },
+    diaryVisibility,
     isFollowing,
-    isOwnProfile: viewerId === user.id,
+    isOwnProfile,
   };
 }
 

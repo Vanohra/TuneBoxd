@@ -9,6 +9,9 @@ router.get('/', socialController.listMembers);
 router.get('/:username', socialController.getProfile);
 router.get('/:username/followers', socialController.listFollowers);
 router.get('/:username/following', socialController.listFollowing);
+router.get('/:username/reviews', socialController.listReviews);
+// Diary privacy is enforced in diaryService (private diaries: owner only).
+router.get('/:username/diary', socialController.getDiary);
 
 // Following someone requires a session.
 router.post('/:username/follow', requireAuth, socialController.follow);

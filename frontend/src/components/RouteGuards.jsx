@@ -26,10 +26,15 @@ export function ProtectedRoute() {
   return <Outlet />;
 }
 
-/** Login/Sign Up pages: logged-in users are sent to their profile instead. */
+/**
+ * Login/Sign Up pages: logged-in users are sent on. Right after logging in this
+ * re-renders before the Login page navigates, so it honors the same `from`
+ * (e.g. back to the album the user wanted to review), defaulting to /profile.
+ */
 export function GuestOnlyRoute() {
   const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
   if (isLoading) return <LoadingScreen />;
-  if (isAuthenticated) return <Navigate to="/profile" replace />;
+  if (isAuthenticated) return <Navigate to={location.state?.from || '/profile'} replace />;
   return <Outlet />;
 }

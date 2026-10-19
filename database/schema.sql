@@ -336,6 +336,11 @@ CREATE TABLE diary_entries (
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
+    -- Added in Sprint 3 (database/migrations/001_sprint3_diary_updated_at.sql).
+    -- NULL until the entry is edited.
+    updated_at TIMESTAMP NULL DEFAULT NULL
+        ON UPDATE CURRENT_TIMESTAMP,
+
     CONSTRAINT chk_diary_target
         CHECK (
             (album_id IS NOT NULL AND song_id IS NULL)

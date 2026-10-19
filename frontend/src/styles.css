@@ -1098,3 +1098,976 @@ p {
     padding: 20px;
   }
 }
+
+/* ==========================================================
+   Sprint 3: music discovery, album pages, reviews, comments, diary
+   ========================================================== */
+
+:root {
+  --star: #f5a524;
+  --star-empty: #dcdce6;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.small {
+  font-size: 13px;
+}
+
+.muted-link {
+  color: var(--text-muted);
+}
+
+.muted-link:hover {
+  color: var(--accent);
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.page-heading .page-subtitle {
+  margin-bottom: 0;
+}
+
+/* User-written text: keep line breaks, never overflow. React escapes the content. */
+.user-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.link-button:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.link-button.danger,
+.link-button.danger:hover {
+  color: var(--danger);
+}
+
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 28px 12px;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.empty-state-title {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.empty-state-action {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.pill + .pill {
+  margin-left: 0;
+}
+
+/* Topbar search is live now (it was a disabled placeholder in Sprint 2). */
+.topbar-search,
+.topbar-search input {
+  cursor: text;
+}
+
+.topbar-search input {
+  color: var(--text);
+}
+
+.topbar-search:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(109, 74, 255, 0.14);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.btn-hero-outline {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.btn-hero-outline:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* ---------- Stars ---------- */
+
+.stars {
+  display: inline-block;
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.stars::before {
+  content: '★★★★★';
+  background: linear-gradient(90deg, var(--star) var(--fill, 0%), var(--star-empty) var(--fill, 0%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.stars-sm {
+  font-size: 14px;
+}
+
+.stars-lg {
+  font-size: 30px;
+  letter-spacing: 2px;
+}
+
+.rating-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rating-input-stars {
+  position: relative;
+  display: inline-flex;
+  padding: 2px 4px;
+  border-radius: var(--radius);
+}
+
+.rating-input-stars:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(109, 74, 255, 0.25);
+}
+
+.rating-input-stars.is-invalid {
+  box-shadow: 0 0 0 1px var(--danger);
+}
+
+.rating-input-hits {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+}
+
+.rating-input-hits button {
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.rating-input-value {
+  min-width: 70px;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rating-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.rating-summary-value {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+/* ---------- Covers & album cards ---------- */
+
+.cover-img {
+  display: block;
+  width: 100%;
+  object-fit: cover;
+  background: #ececf3;
+}
+
+.cover-placeholder {
+  overflow: hidden;
+}
+
+.album-link {
+  color: var(--text);
+  min-width: 0;
+}
+
+.album-link:hover {
+  color: var(--text);
+}
+
+.album-link:hover .album-cover {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.album-link:hover .album-card-title {
+  color: var(--accent);
+}
+
+.album-card-title {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.album-card-sub {
+  margin-top: -6px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.type-tag {
+  align-self: flex-start;
+  padding: 1px 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+}
+
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 22px 18px;
+}
+
+.album-row-filled .album-card .stars {
+  margin-top: -4px;
+}
+
+/* ---------- Search ---------- */
+
+.search-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-input {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 200px;
+  height: 44px;
+  padding: 0 14px;
+  color: var(--text-faint);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+
+.search-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(109, 74, 255, 0.18);
+}
+
+.search-input input {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  background: none;
+  border: 0;
+  outline: none;
+}
+
+.tabs-plain {
+  padding: 0;
+  border-top: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.result-count {
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.result-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.result-list li + li {
+  border-top: 1px solid var(--border);
+}
+
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 10px 6px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.result-row:hover {
+  color: var(--text);
+  background: var(--bg);
+}
+
+.result-row.is-static {
+  padding: 0;
+  cursor: default;
+}
+
+.result-row.is-static:hover {
+  background: none;
+}
+
+.result-row-cover {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+}
+
+.result-row-cover .album-disc {
+  inset: 30%;
+}
+
+.result-row-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.result-row-text > * {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.result-row-title {
+  font-weight: 600;
+}
+
+.result-row:hover .result-row-title {
+  color: var(--accent);
+}
+
+.artist-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 50%;
+}
+
+.artist-badge-lg {
+  width: 200px;
+  height: 200px;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+  font-size: 14px;
+}
+
+/* ---------- Album / song / artist pages ---------- */
+
+.music-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+}
+
+.music-header-cover {
+  flex-shrink: 0;
+  width: 220px;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(23, 24, 43, 0.18);
+}
+
+.music-header-info {
+  flex: 1;
+  min-width: 0;
+  padding-top: 6px;
+}
+
+.music-title {
+  margin: 4px 0 4px;
+  font-size: clamp(24px, 3.4vw, 34px);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.6px;
+  overflow-wrap: anywhere;
+}
+
+.music-artist {
+  font-size: 16px;
+}
+
+.music-artist a {
+  font-weight: 600;
+}
+
+.music-facts {
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.genre-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.music-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: start;
+  gap: 20px;
+}
+
+.action-card {
+  position: sticky;
+  top: 84px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-card .alert {
+  margin-bottom: 0;
+}
+
+.tracklist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.track {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  padding: 9px 4px;
+  font-size: 14px;
+}
+
+.track + .track {
+  border-top: 1px solid var(--border);
+}
+
+.disc-label {
+  flex-basis: 100%;
+  margin: 8px 0 2px;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.track-number {
+  width: 22px;
+  color: var(--text-faint);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.track-title {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  font-weight: 500;
+}
+
+a.track-title:hover {
+  color: var(--accent);
+}
+
+.track-artist {
+  font-size: 13px;
+}
+
+.track-duration {
+  font-variant-numeric: tabular-nums;
+}
+
+.source-note {
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ---------- Reviews ---------- */
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.review-list .review-card + .review-card {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.review-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.review-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.review-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.review-author:hover {
+  color: var(--accent);
+}
+
+.review-date {
+  font-size: 13px;
+}
+
+.review-text {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.review-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.review-footer .inline-actions {
+  margin-top: 0;
+}
+
+.review-target {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text);
+}
+
+.review-target:hover {
+  color: var(--text);
+}
+
+.review-target:hover .review-target-title {
+  color: var(--accent);
+}
+
+.review-target-cover {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+}
+
+.review-target-cover .album-disc,
+.diary-cover .album-disc {
+  inset: 30%;
+}
+
+.review-target-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.review-target-title {
+  font-weight: 700;
+}
+
+.review-form .field textarea {
+  min-height: 120px;
+}
+
+/* ---------- Comments ---------- */
+
+.comments {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+  padding: 14px 16px;
+  background: var(--bg);
+  border-radius: var(--radius);
+}
+
+.comments .empty-text {
+  margin-top: 0;
+  font-size: 14px;
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.comment {
+  display: flex;
+  gap: 10px;
+}
+
+.comment-body {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.comment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  margin-bottom: 2px;
+  font-size: 13px;
+}
+
+.comment-author {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.comment-editor .field {
+  margin-bottom: 8px;
+}
+
+.comment-editor textarea {
+  min-height: 60px;
+}
+
+.comment-editor-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.comment-editor-footer .field-hint,
+.comment-editor-footer .field-error {
+  margin-top: 4px;
+}
+
+.comment-editor .form-actions {
+  margin-top: 0;
+}
+
+/* ---------- Diary ---------- */
+
+.diary-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.visibility {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.segmented button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.segmented button.is-active {
+  color: var(--accent);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.add-entry .search-form {
+  margin-bottom: 12px;
+}
+
+.add-entry-selected .result-row {
+  margin-bottom: 18px;
+}
+
+.diary-month + .diary-month {
+  margin-top: 24px;
+}
+
+.diary-month-title {
+  margin: 0 0 6px;
+  padding-bottom: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+
+.diary-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.diary-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 0;
+}
+
+.diary-row + .diary-row {
+  border-top: 1px solid var(--border);
+}
+
+.diary-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  padding-top: 4px;
+}
+
+.diary-day-number {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.diary-day-weekday {
+  margin-top: 2px;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.diary-cover {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+}
+
+.diary-body {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.diary-title {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.diary-title:hover {
+  color: var(--accent);
+}
+
+.diary-notes {
+  margin-top: 6px;
+  color: var(--text);
+}
+
+.diary-form {
+  margin-top: 10px;
+}
+
+.diary-form .field input[type='date'] {
+  max-width: 220px;
+}
+
+.private-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+/* ---------- Sprint 3 responsive ---------- */
+
+@media (max-width: 900px) {
+  .music-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* On small screens the action card comes first, right under the header. */
+  .music-layout > .action-card {
+    position: static;
+    order: -1;
+  }
+
+  /* The Sprint 2 rule above hides cards 4+ in the 5-up home row; search grids show all. */
+  .album-grid .album-card:nth-child(n + 4) {
+    display: flex;
+  }
+}
+
+@media (max-width: 560px) {
+  .music-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .music-header-cover {
+    width: 180px;
+  }
+
+  .artist-badge-lg {
+    width: 120px;
+    height: 120px;
+  }
+
+  .genre-list,
+  .rating-summary {
+    justify-content: center;
+  }
+
+  .page-heading {
+    flex-direction: column;
+  }
+
+  .visibility {
+    align-items: flex-start;
+  }
+
+  .album-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .diary-row {
+    gap: 10px;
+  }
+
+  .diary-cover {
+    width: 48px;
+    height: 48px;
+  }
+
+  .comments {
+    padding: 12px;
+  }
+}

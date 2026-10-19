@@ -76,3 +76,22 @@ export async function verifyDatabaseConnection() {
     throw new Error(`Unable to connect to database (${err.code || 'unknown error'}). ${hint}`);
   }
 }
+
+/**
+ * Runs `work(conn)` inside a transaction on one pooled connection: commits if
+ * it resolves, rolls back (and rethrows) if it throws.
+ */
+export async function withTransaction(work) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const value = await work(conn);
+    await conn.commit();
+    return value;
+  } catch (err) {
+    await conn.rollback().catch(() => {});
+    throw err;
+  } finally {
+    conn.release();
+  }
+}

@@ -36,6 +36,13 @@ export const config = {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME || 'music_review_app',
   },
+  // MusicBrainz asks every client to send a descriptive User-Agent with a way to
+  // contact the developers: https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting
+  musicBrainz: {
+    baseUrl: 'https://musicbrainz.org/ws/2',
+    coverArtBaseUrl: 'https://coverartarchive.org',
+    userAgent: `TuneBoxd/0.1.0 ( ${process.env.MUSICBRAINZ_CONTACT || 'https://github.com/Vanohra/TuneBoxd'} )`,
+  },
 };
 
 /** Names (never values) of required DB variables that are missing. */
