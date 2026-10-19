@@ -39,12 +39,12 @@ git --version
 You can't connect to the database until all of these are done (Part B covers how):
 
 1. You've accepted the **GitHub collaborator invite** to `Vanohra/TuneBoxd`.
-2. You have an **AWS IAM user** sign-in (console URL, username, temporary password).
-3. You've sent Vanohra your **public IP address** and they've added it to the RDS firewall.
-   Find yours at <https://checkip.amazonaws.com> (just the number, e.g. `203.0.113.45`).
-4. You have your **database username and password** (your own MySQL login, *not* your AWS
+2. You have an **AWS IAM user** sign-in (console URL, username, temporary password). It can
+   look at the RDS instance and **add your own IP** to the database firewall (see A4). It
+   can't change anything else.
+3. You have your **database username and password** (your own MySQL login, *not* your AWS
    login).
-5. You have the **RDS endpoint** (the `DB_HOST`), which looks like
+4. You have the **RDS endpoint** (the `DB_HOST`), which looks like
    `xxxx.xxxxxxxx.us-east-1.rds.amazonaws.com`. You can also read it yourself in the AWS
    console: **RDS → Databases → (our instance) → Connectivity & security → Endpoint**.
 
@@ -64,7 +64,42 @@ cd TuneBoxd
 > **Tip (Windows):** don't clone into a OneDrive-synced folder if you can avoid it.
 > OneDrive syncing `node_modules` is slow and can lock files. `C:\dev\TuneBoxd` is fine.
 
-### A4. Create your `.env` file
+### A4. Allow your IP address in the database firewall (do this yourself)
+
+The database only accepts connections from IP addresses listed in its **security group**
+(AWS's firewall). Your IP changes when you change networks (home, campus, coffee shop,
+phone hotspot), so you manage your own rule. **Do this the first time, and any time you get
+`ETIMEDOUT` after moving somewhere new.**
+
+1. Sign in with your IAM user at the console sign-in URL Vanohra sent you.
+   (First time: set a new password, then turn on MFA: top-right name →
+   **Security credentials → Assign MFA device**.)
+2. Top-right region selector: choose **US East (N. Virginia) us-east-1**. If you're in another
+   region you won't see the security group.
+3. Search **EC2** → left menu **Network & Security → Security Groups**.
+4. Click **`tuneboxd-team-ips`** → **Inbound rules** tab → **Edit inbound rules**.
+5. **If you already have a rule** (its Description is your name): in its **Source** dropdown
+   choose **My IP**. AWS fills in your current address as `x.x.x.x/32`.
+   **If you don't have one yet:** click **Add rule** and set:
+
+   | Field | Value |
+   | ----- | ----- |
+   | Type | **MySQL/Aurora** (TCP 3306) |
+   | Source | **My IP** |
+   | Description | your name + place, e.g. `alex home` |
+
+6. **Save rules.** It works within seconds. Restart `npm run dev` / retry Workbench.
+
+Rules:
+
+- **Only edit or delete your own rules.** Everyone on the team shares this group.
+- **Never** use `0.0.0.0/0` or `Anywhere-IPv4`. That opens the database to the whole internet.
+- One or two rules per person (e.g. `alex home`, `alex campus`) is plenty. Update an old one
+  instead of piling up new ones.
+- "You are not authorized to perform this operation" usually means you opened the wrong
+  security group. You can only edit `tuneboxd-team-ips`.
+
+### A5. Create your `.env` file
 
 The app reads database credentials from a file called `.env` in the **repo root**. It is
 gitignored, so it never gets committed. Copy the example:
@@ -99,7 +134,7 @@ SESSION_SECRET=any-long-random-string-for-local-dev
   this is mandatory.
 - **Never** commit `.env`, paste it in Discord/Slack, or put it in a screenshot.
 
-### A5. Install and run
+### A6. Install and run
 
 From the repo root:
 
@@ -123,7 +158,7 @@ Watch the terminal for one of these lines:
 
 - ✅ `Database connection successful.` You're connected. Open <http://localhost:5173>.
 - ❌ `Unable to connect to database (ETIMEDOUT) ...` Your IP isn't allowed in the RDS
-  firewall (or it changed). See [Troubleshooting](#a8-troubleshooting).
+  firewall (or it changed). See [Troubleshooting](#a9-troubleshooting).
 - ❌ `Unable to connect to database (ER_ACCESS_DENIED_ERROR) ...` Wrong `DB_USER` /
   `DB_PASSWORD`, or `DB_SSL` isn't `true` for an SSL-only user.
 
@@ -138,7 +173,7 @@ Other root commands:
 | `npm run migrate` | Applies `database/migrations/*.sql`. **Coordinate with the team first:** it changes the shared/live DB |
 | `npm run build` | Production build of the frontend into `frontend/dist` |
 
-### A6. Connect MySQL Workbench
+### A7. Connect MySQL Workbench
 
 1. Open MySQL Workbench and click the **⊕** next to **MySQL Connections**.
 2. Fill in:
@@ -163,7 +198,7 @@ Other root commands:
 If Test Connection hangs and then fails with "Can't connect to MySQL server ... (10060)",
 that's the firewall: your IP isn't allowed. Same fix as `ETIMEDOUT` below.
 
-### A7. Making changes and getting them on the live site
+### A8. Making changes and getting them on the live site
 
 The live site runs on **Render** and is wired to the `main` branch: **every push (or merged
 pull request) to `main` automatically rebuilds and redeploys the site**. Live URL:
@@ -218,24 +253,24 @@ Good to know about the free Render plan:
 - Each redeploy or sleep **logs everyone out** (sessions live in memory). Accounts and data
   are safe in MySQL.
 
-### A8. Troubleshooting
+### A9. Troubleshooting
 
 | Symptom | Cause / fix |
 | ------- | ----------- |
-| `ETIMEDOUT` in the terminal, or Workbench error 10060 | Your **IP isn't allowed** in the RDS security group. Home IPs change, and school/coffee-shop Wi-Fi has a different IP. Check <https://checkip.amazonaws.com> and send the new IP to Vanohra. |
+| `ETIMEDOUT` in the terminal, or Workbench error 10060 | Your **IP isn't allowed** in the RDS security group. Home IPs change, and school/coffee-shop Wi-Fi has a different IP. Update your rule in `tuneboxd-team-ips` to **My IP** (see A4). |
 | `ER_ACCESS_DENIED_ERROR` | Wrong DB username/password, or your user requires SSL and `DB_SSL=true` is missing. |
 | `ENOTFOUND` | Typo in `DB_HOST`, or it includes `https://` or `:3306`. Use the bare hostname. |
 | `ER_BAD_DB_ERROR` | `DB_NAME` should be `music_review_app`. |
 | `'vite' is not recognized` / `Cannot find module` | Run `npm run setup` again. |
 | Port 4000 or 5173 already in use | Another `npm run dev` is still running. Close that terminal. |
 | `node: bad option: --watch` or syntax errors | Node is too old. Install Node 20.12+ / 22. |
-| Live site doesn't show my change | Was it merged into `main`? Wait ~5 min, hard refresh. Otherwise the Render build failed (see A7). |
+| Live site doesn't show my change | Was it merged into `main`? Wait ~5 min, hard refresh. Otherwise the Render build failed (see A8). |
 
 ---
 
 ## Part B: For Vanohra (setting teammates up)
 
-Do these once per teammate. You need: GitHub owner access to the repo, the AWS **root or
+B2 and B3 are one-time setup; B4 and B5 are per teammate. You need: GitHub owner access to the repo, the AWS **root or
 admin** login, and the RDS **master** DB user in Workbench.
 
 ### B1. GitHub access
@@ -247,63 +282,121 @@ admin** login, and the RDS **master** DB user in Workbench.
    "Require a pull request before merging". This stops accidental direct pushes from
    redeploying the site.
 
-### B2. Create an IAM user for each teammate
+### B2. One-time: create a separate security group just for teammate IPs
+
+Teammates add their own IPs (A4), so they need permission to edit a security group. IAM
+**can't** limit *which* port or IP range someone adds, only *which security group* they can
+touch. So give them their **own** group instead of the main one:
+
+| Security group | Holds | Who can edit |
+| -------------- | ----- | ------------ |
+| `sg-0f17cbc3846d7c761` (existing) | Render's IP ranges + your own IP | **Only you** |
+| `tuneboxd-team-ips` (new) | Teammates' IPs | Teammates (only this group) |
+
+An RDS instance can have several security groups, and a connection is allowed if **any** of
+them allows it. Teammates can't break the live site by deleting Render's rules, because
+those live in a group they can't edit.
+
+1. **Find the VPC:** RDS → **Databases** → our instance → **Connectivity & security** → note
+   the **VPC** (`vpc-...`).
+2. **EC2 → Security Groups → Create security group:**
+   - Name: `tuneboxd-team-ips`
+   - Description: `Teammate IPs for TuneBoxd RDS (MySQL 3306)`
+   - VPC: the one from step 1
+   - Inbound rules: none for now (teammates add their own). Leave outbound as default.
+   - **Create security group**, then copy its ID (`sg-...`). You need it in B3.
+3. **Attach it to RDS:** RDS → our instance → **Modify** → **Connectivity → Security group**:
+   **add** `tuneboxd-team-ips` and **keep** the existing group selected →
+   **Continue** → **Apply immediately** → **Modify DB instance**. Changing security groups
+   doesn't reboot the database, and it shows as attached within a minute or two.
+4. Check that **Publicly accessible = Yes** on the same page (it already is, or nobody could
+   connect from home).
+
+### B3. One-time: create the IAM policy and a team group
+
+**Find your account ID:** click your name (top right) and copy the 12-digit **Account ID**.
+
+**Create the policy:** IAM → **Policies** → **Create policy** → **JSON** tab, and paste this.
+Replace `123456789012` with your account ID and `sg-NEWGROUPID` with the ID from B2:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ViewSecurityGroups",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSecurityGroupRules",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeTags"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EditOnlyTheTeamIpGroup",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:ModifySecurityGroupRules",
+        "ec2:UpdateSecurityGroupRuleDescriptionsIngress"
+      ],
+      "Resource": [
+        "arn:aws:ec2:us-east-1:123456789012:security-group/sg-NEWGROUPID",
+        "arn:aws:ec2:us-east-1:123456789012:security-group-rule/*"
+      ]
+    }
+  ]
+}
+```
+
+**Next** → Name: `TuneBoxdTeamIpAccess` → **Create policy**.
+
+What this allows and doesn't allow:
+
+- ✅ See security groups (read-only) and add, edit or remove **inbound** rules on
+  `tuneboxd-team-ips` only. (The `security-group-rule/*` line is needed for editing existing
+  rules; AWS still requires the group ARN on every edit, so it only works inside that group.)
+- ❌ Touch the main group with the Render rules, delete any group, change outbound rules,
+  attach groups to anything, or touch any other AWS service.
+- ⚠️ It can't stop someone from adding a bad rule *inside* their group (e.g. `0.0.0.0/0`).
+  A4 tells them not to. Check the group once in a while, and keep strong per-person DB
+  passwords with SSL (B5) as the second lock.
+
+**Create the group:** IAM → **User groups** → **Create group**:
+
+- Name: `tuneboxd-team`
+- Attach policies: `TuneBoxdTeamIpAccess` (yours, filter by "Customer managed") and
+  `AmazonRDSReadOnlyAccess` (lets them see the instance, endpoint and status, read-only).
+- **Create user group.**
+
+Putting permissions on a group means each new teammate is just "create user, add to group".
+
+### B4. Per teammate: create their IAM user
 
 IAM users live **inside your AWS account**, so you create them (teammates can't make their
-own in your account). This gives them their own AWS console login instead of sharing yours.
+own in your account).
 
-1. AWS Console → search **IAM** → **Users** → **Create user**.
+1. IAM → **Users** → **Create user**.
 2. **User name:** e.g. `tuneboxd-alex`.
 3. Check **Provide user access to the AWS Management Console** →
    **I want to create an IAM user** → **Custom password** (or autogenerated) →
    check **Users must create a new password at next sign-in**. Click **Next**.
-4. **Permissions:** choose **Attach policies directly** and tick:
-   - `AmazonRDSReadOnlyAccess` (lets them see the instance, endpoint and status, but not
-     change or delete it)
-   - `IAMUserChangePassword` is added automatically because of the reset-on-first-sign-in
-     box.
-
-   Don't give them `AdministratorAccess`. They don't need it.
+4. **Permissions:** **Add user to group** → tick **`tuneboxd-team`**. (`IAMUserChangePassword`
+   is added automatically because of the reset-on-first-sign-in box.) Don't give anyone
+   `AdministratorAccess`.
 5. **Next → Create user**. On the final page, click **Download .csv** or copy the
    **Console sign-in URL** (`https://<your-account-id>.signin.aws.amazon.com/console`),
    username and password.
-6. Send those to the teammate **privately** (DM, not the group chat). Tell them to turn on MFA:
-   top-right name → **Security credentials → Assign MFA device**.
+6. Send those to the teammate **privately** (DM, not the group chat) and point them at A4.
 
-> **Optional: let teammates add their own IP.** If you'd rather not do every IP change
-> yourself, you can create an inline policy that allows `ec2:DescribeSecurityGroups`,
-> `ec2:AuthorizeSecurityGroupIngress` and `ec2:RevokeSecurityGroupIngress` on just the RDS
-> security group (`sg-0f17cbc3846d7c761`). Otherwise keep doing it yourself with B3.
+**Test it once:** sign in as one teammate (or ask them to share their screen). They should be
+able to add a **My IP** rule to `tuneboxd-team-ips`, and get **"not authorized"** if they try
+to edit `sg-0f17cbc3846d7c761`.
 
-### B3. Allow a teammate's IP in the RDS security group (inbound rule)
-
-The RDS security group is the firewall that decides who can reach MySQL on port 3306.
-
-1. Teammate sends you their IP from <https://checkip.amazonaws.com>.
-2. AWS Console → **RDS → Databases →** our instance → **Connectivity & security** →
-   under **Security**, click the **VPC security group** link (`sg-0f17cbc3846d7c761`).
-   You can also go to **EC2 → Security Groups** directly.
-3. Select the group → **Inbound rules** tab → **Edit inbound rules → Add rule**:
-
-   | Field | Value |
-   | ----- | ----- |
-   | Type | **MySQL/Aurora** (fills in TCP 3306) |
-   | Source | **Custom** → `203.0.113.45/32` (their IP + `/32` = exactly that one address) |
-   | Description | `alex home` (name + place, so you know which rule to remove later) |
-
-4. **Save rules.** It takes effect within seconds, with no restart needed.
-
-Rules of thumb:
-
-- **Never** use `0.0.0.0/0` (the whole internet).
-- **Don't remove** the existing **Render** rules (`74.220.49.0/24`, `74.220.57.0/24`, the
-  live site's outbound ranges) or your own IP rule.
-- When someone's IP changes, **edit** their old rule (or delete it and add a new one) so stale
-  IPs don't pile up.
-- Also make sure **RDS → Connectivity & security → Publicly accessible = Yes** (it already is,
-  or nobody could connect from home).
-
-### B4. Create a MySQL user for each teammate (recommended)
+### B5. Per teammate: create their MySQL user (recommended)
 
 Instead of handing out the master password, give each person their own DB login. Then you
 can revoke one person without changing everyone's `.env` (and the Render settings).
@@ -332,19 +425,20 @@ ALTER USER 'alex'@'%' IDENTIFIED BY 'new-password';     -- reset a password
 DROP USER 'alex'@'%';                                   -- remove access
 ```
 
-`@'%'` means "from any IP", but the security group (B3) still decides which IPs can reach
-the database at all, so both checks apply.
+`@'%'` means "from any IP", but the security groups still decide which IPs can reach the
+database at all, so both checks apply.
 
-### B5. Things to tell them
+### B6. Things to send each teammate
 
-- The RDS endpoint (`DB_HOST`), their DB username/password, and the console sign-in URL.
-- The live Render URL.
+- Console sign-in URL, IAM username and temporary password.
+- The RDS endpoint (`DB_HOST`) and their DB username/password.
+- The live Render URL: https://tuneboxd.onrender.com
+- "Add your own IP with A4 whenever you change networks, and only touch your own rules."
 - "Local dev uses the same DB as the live site, so be careful" (see the warning at the top).
-- To message you when their IP changes.
 
-### B6. Offboarding checklist (end of semester)
+### B7. Offboarding checklist (end of semester)
 
 1. **IAM → Users →** delete their user.
-2. **Security group →** delete their inbound rule.
+2. **EC2 → Security Groups → `tuneboxd-team-ips` →** delete their inbound rules.
 3. **Workbench →** `DROP USER 'name'@'%';`
 4. **GitHub →** remove them as a collaborator (optional).
