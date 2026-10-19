@@ -28,6 +28,9 @@ schema in [database/schema.sql](database/schema.sql)). See
 
 ## Running locally
 
+**New to the team?** Start with [docs/team-handoff.md](docs/team-handoff.md): cloning, getting
+database access, MySQL Workbench, and how pushing to `main` updates the live site.
+
 Requires Node.js 20.12+.
 
 **Quick start from the repo root (one terminal):** after creating `.env` (step 0 below), run
