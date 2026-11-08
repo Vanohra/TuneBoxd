@@ -34,3 +34,6 @@ services:
         sync: false
       - key: MUSICBRAINZ_CONTACT
         sync: false
+      # Optional: enables Claude-written recommendations and summaries.
+      - key: ANTHROPIC_API_KEY
+        sync: false

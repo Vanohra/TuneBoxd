@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { deleteReview } from '../api/reviews.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import { formatDate, releaseYear, targetPath } from '../utils/format.js';
 import Alert from './Alert.jsx';
 import Avatar from './Avatar.jsx';
 import CommentSection from './CommentSection.jsx';
 import CoverArt from './CoverArt.jsx';
-import { CommentIcon, EditIcon, TrashIcon } from './Icons.jsx';
+import { CommentIcon, EditIcon, FlagIcon, TrashIcon } from './Icons.jsx';
+import ReportReviewForm from './ReportReviewForm.jsx';
 import ReviewForm from './ReviewForm.jsx';
 import { StarRating } from './StarRating.jsx';
 
@@ -16,7 +18,9 @@ import { StarRating } from './StarRating.jsx';
  * (used on profiles and the home page).
  */
 export default function ReviewCard({ review: initial, showTarget = false, commentsOpen = false, onChanged, onDeleted }) {
+  const { user } = useAuth();
   const [review, setReview] = useState(initial);
+  const [isReporting, setIsReporting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showComments, setShowComments] = useState(commentsOpen);
   const [commentCount, setCommentCount] = useState(initial.commentCount);
@@ -101,6 +105,13 @@ export default function ReviewCard({ review: initial, showTarget = false, commen
             {commentCount === 0 ? 'Comment' : `${commentCount} comment${commentCount === 1 ? '' : 's'}`}
           </button>
 
+          {user && !review.isOwner && !isReporting && (
+            <button type="button" className="link-button subtle" onClick={() => setIsReporting(true)}>
+              <FlagIcon size={15} />
+              Report
+            </button>
+          )}
+
           {review.isOwner && (
             <span className="inline-actions">
               {confirmDelete ? (
@@ -128,6 +139,17 @@ export default function ReviewCard({ review: initial, showTarget = false, commen
             </span>
           )}
         </footer>
+      )}
+
+      {isReporting && (
+        <ReportReviewForm
+          reviewId={review.id}
+          onCancel={() => setIsReporting(false)}
+          onReported={(message) => {
+            setIsReporting(false);
+            setNotice(message);
+          }}
+        />
       )}
 
       {showComments && <CommentSection reviewId={review.id} onCountChange={setCommentCount} />}

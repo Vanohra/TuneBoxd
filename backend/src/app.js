@@ -9,9 +9,12 @@ import express from 'express';
 import session from 'express-session';
 import { config } from './config.js';
 import { isDatabaseError, isDatabaseUnavailable } from './db.js';
+import adminRoutes from './routes/adminRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import commentRoutes from './routes/commentRoutes.js';
 import diaryRoutes from './routes/diaryRoutes.js';
+import insightsRoutes from './routes/insightsRoutes.js';
+import listRoutes from './routes/listRoutes.js';
 import musicRoutes from './routes/musicRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import socialRoutes from './routes/socialRoutes.js';
@@ -54,6 +57,9 @@ app.use('/api/music', musicRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/diary', diaryRoutes);
+app.use('/api/lists', listRoutes);
+app.use('/api/insights', insightsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Used by Render's health check. Deliberately doesn't touch the database, so a
 // brief RDS hiccup doesn't make the platform restart the app.

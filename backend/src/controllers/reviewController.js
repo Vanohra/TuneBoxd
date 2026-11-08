@@ -1,4 +1,5 @@
 import * as commentService from '../services/commentService.js';
+import * as reportService from '../services/reportService.js';
 import * as reviewService from '../services/reviewService.js';
 
 const viewerIdOf = (req) => req.session?.userId ?? null;
@@ -40,4 +41,15 @@ export async function listComments(req, res) {
 export async function createComment(req, res) {
   const comment = await commentService.createComment(req.currentUser.id, req.params.id, req.body ?? {});
   res.status(201).json({ comment, message: 'Comment posted.' });
+}
+
+// GET /api/reviews/report-reasons
+export function listReportReasons(req, res) {
+  res.json({ reasons: reportService.listReasons() });
+}
+
+// POST /api/reviews/:id/report (requireAuth) body: { reason, details? }
+export async function reportReview(req, res) {
+  await reportService.reportReview(req.currentUser.id, req.params.id, req.body ?? {});
+  res.status(201).json({ message: 'Thanks. An administrator will review this report.' });
 }

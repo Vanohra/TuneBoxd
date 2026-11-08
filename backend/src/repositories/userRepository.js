@@ -140,3 +140,49 @@ export async function listUsers() {
   );
   return rows.map(toUser);
 }
+
+// ---------- Administration (Sprint 4) ----------
+
+// Accounts for the admin console (any status) with activity counts.
+const SELECT_ADMIN_USERS = `SELECT ${USER_COLUMNS},
+    (SELECT COUNT(*) FROM reviews r WHERE r.user_id = users.user_id) AS review_count,
+    (SELECT COUNT(*) FROM review_reports rr JOIN reviews r ON r.review_id = rr.review_id
+      WHERE r.user_id = users.user_id AND rr.status IN ('pending', 'removed')) AS flagged_count
+  FROM users`;
+
+const toAdminRow = (row) => ({ ...toUser(row), reviewCount: Number(row.review_count), flaggedCount: Number(row.flagged_count) });
+
+/** Newest first. `query` matches username, display name or email (LIKE wildcards escaped). */
+export async function listUsersForAdmin({ query = '' } = {}) {
+  const like = `%${String(query).trim().replace(/[\\%_]/g, '\\$&')}%`;
+  const [rows] = await pool.execute(
+    `${SELECT_ADMIN_USERS} WHERE username LIKE ? OR display_name LIKE ? OR email LIKE ?
+     ORDER BY created_at DESC, user_id DESC LIMIT 200`,
+    [like, like, like],
+  );
+  return rows.map(toAdminRow);
+}
+
+export async function findUserForAdmin(id) {
+  const [rows] = await pool.execute(`${SELECT_ADMIN_USERS} WHERE user_id = ?`, [id]);
+  return rows[0] ? toAdminRow(rows[0]) : null;
+}
+
+/** @param {'active'|'suspended'} status */
+export async function setAccountStatus(id, status) {
+  const [result] = await pool.execute('UPDATE users SET account_status = ? WHERE user_id = ?', [status, id]);
+  return result.affectedRows > 0;
+}
+
+/** @param {'user'|'admin'} role */
+export async function setRole(id, role) {
+  const [result] = await pool.execute('UPDATE users SET role = ? WHERE user_id = ?', [role, id]);
+  return result.affectedRows > 0;
+}
+
+export async function countActiveAdmins() {
+  const [[row]] = await pool.execute(
+    "SELECT COUNT(*) AS total FROM users WHERE role = 'admin' AND account_status = 'active'",
+  );
+  return Number(row.total);
+}

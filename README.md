@@ -10,6 +10,10 @@ Currently built:
 - **Sprint 3:** music search and album/artist/song pages (MusicBrainz + Cover Art Archive),
   reviews with half-star ratings, comments on reviews, and a listening diary with
   public/private visibility.
+- **Sprint 4:** custom lists of albums and songs (public or private, reorderable),
+  reporting reviews and an administrator console (report queue, remove/restore reviews,
+  suspend/reactivate accounts, grant admin), listening statistics, personalized
+  recommendations and listening/review summaries (optionally written by Claude).
 
 All user data is stored in **MySQL on Amazon RDS** (database `music_review_app`,
 schema in [database/schema.sql](database/schema.sql)). See
@@ -81,6 +85,24 @@ so the browser sees one origin and the session cookie just works (no CORS setup)
 | `NODE_ENV`       | unset                       | `production` turns on `Secure` cookies      |
 | `MUSICBRAINZ_CONTACT` | project GitHub URL     | Email/URL in the MusicBrainz User-Agent     |
 | `DB_SSL`         | unset                       | `true` = TLS to RDS (set on Render)         |
+| `ANTHROPIC_API_KEY` | unset                    | Optional. Claude writes recommendation reasons and summaries; without it TuneBoxd uses its own rule-based text |
+| `ANTHROPIC_MODEL` | `claude-opus-5-5`          | Optional model override for the AI features |
+
+### Database migrations and the first administrator
+
+```bash
+npm run migrate
+```
+
+applies `database/migrations/*.sql` (each is additive and safe to re-run). Migration 002
+only creates the Sprint 4 tables if an older database is missing them.
+
+Nobody is an administrator by default. Promote the first one from the command line
+(after that, admins can promote others from the Admin page):
+
+```bash
+npm --prefix backend run make-admin -- <username>
+```
 
 ### Deploying
 
@@ -96,7 +118,9 @@ npm test
 
 Runs unit tests (validation, MusicBrainz mapping) and end-to-end API tests against the
 **real RDS database and live MusicBrainz** (about a minute, because of the 1 request/second
-limit). The API tests create throwaway users named `s3test_*` and delete them at the end.
+limit). The API tests create throwaway users named `s3test_*` / `s4test_*` and delete them at the end.
+`test/sprint4.api.test.js` covers lists, privacy, reports, moderation, admin accounts,
+statistics, recommendations and summaries.
 
 ## API
 
@@ -117,6 +141,32 @@ limit). The API tests create throwaway users named `s3test_*` and delete them at
 Sprint 3 adds `/api/music/*`, `/api/reviews/*`, `/api/comments/*`, `/api/diary/*`,
 `/api/users/:username/reviews` and `/api/users/:username/diary`. See the full table in
 [docs/sprint3-music-features.md](docs/sprint3-music-features.md#api-added-in-sprint-3).
+
+Sprint 4 adds:
+
+| Method | Path | Auth? | Purpose |
+| ------ | ---- | ----- | ------- |
+| GET | `/api/lists` | Yes | Your lists (public and private) |
+| GET | `/api/lists/recent` | No | Newest public lists |
+| GET | `/api/lists/for/:targetType/:mbid` | Yes | Your lists, flagged if they contain this album/song |
+| GET | `/api/lists/:id` | No | A list and its items (private: owner only, else 404) |
+| POST / PATCH / DELETE | `/api/lists[/:id]` | Yes (owner) | `{ title, description?, isPublic? }` |
+| POST | `/api/lists/:id/items` | Yes (owner) | `{ targetType, mbid }` |
+| DELETE | `/api/lists/:id/items/:key` | Yes (owner) | Remove item (`album-12`, `song-7`) |
+| PUT | `/api/lists/:id/order` | Yes (owner) | `{ keys: [...] }` new order |
+| GET | `/api/users/:username/lists` | No | Public lists (all for the owner) |
+| GET | `/api/users/:username/stats` | No | Listening statistics (403 if their diary is private) |
+| GET | `/api/reviews/report-reasons` | No | Report reason codes and labels |
+| POST | `/api/reviews/:id/report` | Yes | `{ reason, details? }` (not your own; once per review) |
+| GET | `/api/insights/stats` | Yes | Your listening statistics |
+| GET | `/api/insights/recommendations` | Yes | Saved recommendations (generated on first visit) |
+| POST | `/api/insights/recommendations/refresh` | Yes | Regenerate recommendations |
+| GET / POST | `/api/insights/summaries` | Yes | List / create `{ periodStart, periodEnd }` (max one year) |
+| DELETE | `/api/insights/summaries/:id` | Yes (owner) | Delete a summary |
+| GET | `/api/admin/reports?status=` | Admin | `pending` (default), `removed`, `dismissed`, `reviewed`, `all` |
+| POST | `/api/admin/reports/:id/dismiss` \| `remove` \| `restore` | Admin | Keep, hide or un-hide the reported review |
+| GET | `/api/admin/users?q=` | Admin | Accounts with review and flagged counts |
+| PATCH | `/api/admin/users/:id` | Admin | `{ accountStatus?, role? }` (not yourself; never the last active admin) |
 
 Errors look like `{ "error": "Message", "fieldErrors": { "email": "..." } }`.
 Your own user object (`/api/me`) contains `id` (= `users.user_id`), `username`, `email`,
@@ -256,6 +306,4 @@ curl -b cookies.txt http://localhost:4000/api/me
 
 ## Not built yet
 
-Lists, review likes, reporting reviews from the UI and a moderator screen (the backend already
-hides reviews whose report is `removed`), notifications, OAuth, email verification, password reset,
-admin tools (the `role` column exists and is returned by `/api/me`, but no route checks it yet).
+Review likes, notifications, OAuth, email verification and password reset.

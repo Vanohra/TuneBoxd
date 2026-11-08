@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { fetchUserDiary } from '../api/diary.js';
+import { fetchUserStats } from '../api/insights.js';
+import { fetchUserLists } from '../api/lists.js';
 import { fetchUserReviews } from '../api/reviews.js';
 import { fetchFollowers, fetchFollowing, fetchProfile } from '../api/users.js';
 import Avatar from './Avatar.jsx';
 import CoverArt from './CoverArt.jsx';
 import DiaryList from './DiaryList.jsx';
 import FollowButton from './FollowButton.jsx';
+import ListGrid from './ListGrid.jsx';
 import { CalendarIcon, LockIcon, MailIcon } from './Icons.jsx';
 import ReviewCard from './ReviewCard.jsx';
 import { StarRating } from './StarRating.jsx';
+import StatsView from './StatsView.jsx';
 import { EmptyState, ErrorState, Loading } from './Status.jsx';
 import UserList from './UserList.jsx';
 
@@ -18,6 +22,7 @@ const TABS = [
   { id: 'reviews', label: 'Reviews' },
   { id: 'diary', label: 'Diary' },
   { id: 'lists', label: 'Lists' },
+  { id: 'stats', label: 'Stats' },
   { id: 'following', label: 'Following' },
   { id: 'followers', label: 'Followers' },
 ];
@@ -176,13 +181,77 @@ function DiaryPanel({ username, isOwnProfile }) {
   );
 }
 
-function EmptyPanel({ title, children }) {
+/** Lists tab: public lists for visitors, all lists (with private ones marked) for the owner. */
+function ListsPanel({ username, isOwnProfile }) {
+  const [state, setState] = useState({ status: 'loading' });
+
+  useEffect(() => {
+    let cancelled = false;
+    setState({ status: 'loading' });
+    fetchUserLists(username)
+      .then((lists) => !cancelled && setState({ status: 'done', lists }))
+      .catch((error) => !cancelled && setState({ status: 'error', error }));
+    return () => {
+      cancelled = true;
+    };
+  }, [username]);
+
   return (
     <section className="card">
-      <h2 className="section-title">{title}</h2>
-      <p className="empty-text">{children}</p>
+      <div className="card-header">
+        <h2 className="section-title">Lists</h2>
+        {isOwnProfile && (
+          <Link to="/lists" className="btn btn-outline btn-sm">
+            Manage lists
+          </Link>
+        )}
+      </div>
+      {state.status === 'loading' && <Loading inline label="Loading lists…" />}
+      {state.status === 'error' && <ErrorState title="Couldn’t load lists" message={state.error.message} />}
+      {state.status === 'done' &&
+        (state.lists.length === 0 ? (
+          <EmptyState title="No lists yet">
+            {isOwnProfile ? 'Create a list from the Lists page or any album page.' : `@${username} hasn’t made any public lists yet.`}
+          </EmptyState>
+        ) : (
+          <ListGrid lists={state.lists} />
+        ))}
     </section>
   );
+}
+
+/** Stats tab. Follows the diary's privacy: private diaries come back as 403. */
+function StatsPanel({ username, isOwnProfile }) {
+  const [state, setState] = useState({ status: 'loading' });
+
+  useEffect(() => {
+    let cancelled = false;
+    setState({ status: 'loading' });
+    fetchUserStats(username)
+      .then((stats) => !cancelled && setState({ status: 'done', stats }))
+      .catch((error) => !cancelled && setState({ status: 'error', error }));
+    return () => {
+      cancelled = true;
+    };
+  }, [username]);
+
+  if (state.status === 'loading') return <Loading label="Loading statistics…" />;
+  if (state.status === 'error') {
+    return (
+      <section className="card">
+        {state.error.status === 403 ? (
+          <div className="empty-state">
+            <LockIcon size={28} />
+            <p className="empty-state-title">These statistics are private</p>
+            <p className="empty-text">@{username}’s diary is private, so their listening statistics are too.</p>
+          </div>
+        ) : (
+          <ErrorState title="Couldn’t load statistics" message={state.error.message} />
+        )}
+      </section>
+    );
+  }
+  return <StatsView stats={state.stats} isOwner={isOwnProfile} username={username} />;
 }
 
 /** Loads and shows the follower/following list for the active tab. */
@@ -282,6 +351,7 @@ export default function ProfileView({ username, email }) {
   const statItems = [
     { id: 'reviews', value: stats.reviews, label: stats.reviews === 1 ? 'Review' : 'Reviews' },
     ...(stats.diaryEntries == null ? [] : [{ id: 'diary', value: stats.diaryEntries, label: 'Diary' }]),
+    { id: 'lists', value: stats.lists, label: stats.lists === 1 ? 'List' : 'Lists' },
     { id: 'followers', value: stats.followers, label: stats.followers === 1 ? 'Follower' : 'Followers' },
     { id: 'following', value: stats.following, label: 'Following' },
   ];
@@ -373,7 +443,9 @@ export default function ProfileView({ username, email }) {
 
       {activeTab === 'diary' && <DiaryPanel username={profile.username} isOwnProfile={profile.isOwnProfile} />}
 
-      {activeTab === 'lists' && <EmptyPanel title="Lists">No lists yet. Custom music lists are coming soon.</EmptyPanel>}
+      {activeTab === 'lists' && <ListsPanel username={profile.username} isOwnProfile={profile.isOwnProfile} />}
+
+      {activeTab === 'stats' && <StatsPanel username={profile.username} isOwnProfile={profile.isOwnProfile} />}
 
       {(activeTab === 'following' || activeTab === 'followers') && (
         <FollowList

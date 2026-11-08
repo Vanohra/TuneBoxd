@@ -1,6 +1,8 @@
 import * as diaryService from '../services/diaryService.js';
+import * as listService from '../services/listService.js';
 import * as reviewService from '../services/reviewService.js';
 import * as socialService from '../services/socialService.js';
+import * as statsService from '../services/statsService.js';
 
 // Public routes still use the session (if any) to mark "following" state.
 const viewerIdOf = (req) => req.session?.userId ?? null;
@@ -43,4 +45,14 @@ export async function listReviews(req, res) {
 // GET /api/users/:username/diary (403 when private and you aren't the owner)
 export async function getDiary(req, res) {
   res.json(await diaryService.getDiaryForUsername(req.params.username, viewerIdOf(req)));
+}
+
+// GET /api/users/:username/lists (public lists; all lists for the owner)
+export async function listLists(req, res) {
+  res.json({ lists: await listService.listByUsername(req.params.username, viewerIdOf(req)) });
+}
+
+// GET /api/users/:username/stats (403 when their diary is private and you aren't the owner)
+export async function getStats(req, res) {
+  res.json({ stats: await statsService.getStatsForUsername(req.params.username, viewerIdOf(req)) });
 }

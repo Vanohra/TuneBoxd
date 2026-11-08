@@ -40,6 +40,12 @@ export const config = {
     // where traffic to RDS crosses the public internet.
     ssl: process.env.DB_SSL === 'true' ? 'Amazon RDS' : undefined,
   },
+  // Optional: Claude writes recommendation reasons and listening summaries.
+  // Without a key those features use TuneBoxd's own rule-based text.
+  ai: {
+    apiKey: process.env.ANTHROPIC_API_KEY || '',
+    model: process.env.ANTHROPIC_MODEL || 'claude-opus-5-5',
+  },
   // MusicBrainz asks every client to send a descriptive User-Agent with a way to
   // contact the developers: https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting
   musicBrainz: {

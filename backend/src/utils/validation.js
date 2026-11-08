@@ -259,3 +259,90 @@ export function validateDiaryUpdate(input = {}) {
 }
 
 export const DIARY_VISIBILITIES = ['public', 'private'];
+
+// ---------- Sprint 4: lists, reports, moderation, summaries ----------
+
+export const LIST_TITLE_MAX_LENGTH = 100;
+export const LIST_DESCRIPTION_MAX_LENGTH = 1000;
+export const LIST_MAX_ITEMS = 250;
+
+/** POST /api/lists and PATCH /api/lists/:id body: { title, description?, isPublic? } */
+export function validateList(input = {}) {
+  const fieldErrors = {};
+  const title = cleanText(input.title).replace(/\s+/g, ' ');
+  const description = cleanText(input.description);
+  if (!title) fieldErrors.title = 'List title cannot be empty.';
+  else if (title.length > LIST_TITLE_MAX_LENGTH) fieldErrors.title = `Titles must be ${LIST_TITLE_MAX_LENGTH} characters or fewer.`;
+  if (description.length > LIST_DESCRIPTION_MAX_LENGTH) {
+    fieldErrors.description = `Descriptions must be ${LIST_DESCRIPTION_MAX_LENGTH} characters or fewer.`;
+  }
+  if (input.isPublic !== undefined && typeof input.isPublic !== 'boolean') {
+    fieldErrors.isPublic = 'Choose public or private.';
+  }
+  const isPublic = input.isPublic === undefined ? true : input.isPublic;
+  return { values: { title, description, isPublic }, fieldErrors, error: firstError(fieldErrors) };
+}
+
+/** POST /api/lists/:id/items body: { targetType, mbid } */
+export function validateListItem(input = {}) {
+  const fieldErrors = {};
+  const { targetType, mbid } = checkTarget(input, fieldErrors);
+  return { values: { targetType, mbid }, fieldErrors, error: firstError(fieldErrors) };
+}
+
+// Stored in review_reports.reason (VARCHAR(255)); the UI shows the labels.
+export const REPORT_REASONS = {
+  spam: 'Spam or advertising',
+  harassment: 'Harassment or bullying',
+  hate: 'Hate speech',
+  explicit: 'Sexual or explicit content',
+  offtopic: 'Off-topic or not a review',
+  other: 'Something else',
+};
+export const REPORT_DETAILS_MAX_LENGTH = 500;
+
+/** POST /api/reviews/:id/report body: { reason, details? } */
+export function validateReport(input = {}) {
+  const fieldErrors = {};
+  const reason = asString(input.reason);
+  const details = cleanText(input.details);
+  if (!Object.hasOwn(REPORT_REASONS, reason)) fieldErrors.reason = 'Please choose a reason.';
+  if (details.length > REPORT_DETAILS_MAX_LENGTH) {
+    fieldErrors.details = `Details must be ${REPORT_DETAILS_MAX_LENGTH} characters or fewer.`;
+  } else if (reason === 'other' && !details) {
+    fieldErrors.details = 'Please tell us what’s wrong with this review.';
+  }
+  return { values: { reason, details }, fieldErrors, error: firstError(fieldErrors) };
+}
+
+export const USER_ROLES = ['user', 'admin'];
+export const ACCOUNT_STATUSES = ['active', 'suspended'];
+
+const PERIOD_DAYS_MAX = 366;
+
+/**
+ * POST /api/summaries body: { periodStart, periodEnd } as "YYYY-MM-DD".
+ * Periods are at most a year long and can't end in the future.
+ */
+export function validateSummaryPeriod(input = {}) {
+  const fieldErrors = {};
+  // Same calendar-date rules as diary listening dates, with period wording.
+  const checkDate = (value, field, noun) => {
+    const errors = {};
+    const ymd = checkListenedOn(value, errors);
+    if (errors.listenedOn) {
+      fieldErrors[field] = errors.listenedOn
+        .replace('the date you listened', `the ${noun} date`)
+        .replace('Listening date', `The ${noun} date`);
+    }
+    return ymd;
+  };
+  const periodStart = checkDate(input.periodStart, 'periodStart', 'start');
+  const periodEnd = checkDate(input.periodEnd, 'periodEnd', 'end');
+  if (!fieldErrors.periodStart && !fieldErrors.periodEnd) {
+    const days = (Date.parse(periodEnd) - Date.parse(periodStart)) / 86_400_000;
+    if (days < 0) fieldErrors.periodEnd = 'The end date must be on or after the start date.';
+    else if (days > PERIOD_DAYS_MAX) fieldErrors.periodEnd = 'Summaries can cover at most one year.';
+  }
+  return { values: { periodStart, periodEnd }, fieldErrors, error: firstError(fieldErrors) };
+}

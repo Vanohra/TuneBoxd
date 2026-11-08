@@ -6,6 +6,7 @@ const router = Router();
 
 // Public reads
 router.get('/', reviewController.listRecent);
+router.get('/report-reasons', reviewController.listReportReasons);
 router.get('/:id', reviewController.getReview);
 router.get('/:id/comments', reviewController.listComments);
 
@@ -14,5 +15,6 @@ router.post('/', requireAuth, reviewController.createReview);
 router.patch('/:id', requireAuth, reviewController.updateReview);
 router.delete('/:id', requireAuth, reviewController.deleteReview);
 router.post('/:id/comments', requireAuth, reviewController.createComment);
+router.post('/:id/report', requireAuth, reviewController.reportReview);
 
 export default router;

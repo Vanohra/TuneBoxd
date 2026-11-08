@@ -48,3 +48,13 @@ export async function updateComment(id, text) {
 export function deleteComment(id) {
   return apiRequest(`/comments/${id}`, { method: 'DELETE' });
 }
+
+/** [{ id, label }] reasons a review can be reported for. */
+export async function fetchReportReasons() {
+  const { reasons } = await apiRequest('/reviews/report-reasons');
+  return reasons;
+}
+
+export function reportReview(id, { reason, details }) {
+  return apiRequest(`/reviews/${id}/report`, { method: 'POST', body: { reason, details } });
+}

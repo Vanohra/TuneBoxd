@@ -38,3 +38,27 @@ export function GuestOnlyRoute() {
   if (isAuthenticated) return <Navigate to={location.state?.from || '/profile'} replace />;
   return <Outlet />;
 }
+
+/**
+ * Administrator pages. Signed-in non-admins see a "not allowed" message. Like
+ * ProtectedRoute this is convenience only: every /api/admin call is checked
+ * on the server against the role stored in MySQL.
+ */
+export function AdminRoute() {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) return <LoadingScreen />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: location.pathname, notice: 'Please log in to continue.' }} />;
+  }
+  if (user.role !== 'admin') {
+    return (
+      <section className="card narrow center">
+        <h1 className="page-title">Administrators only</h1>
+        <p className="muted">You don’t have access to this page.</p>
+      </section>
+    );
+  }
+  return <Outlet />;
+}

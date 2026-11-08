@@ -7,6 +7,7 @@
  */
 import * as diaryRepository from '../repositories/diaryRepository.js';
 import * as followRepository from '../repositories/followRepository.js';
+import * as listRepository from '../repositories/listRepository.js';
 import * as reviewRepository from '../repositories/reviewRepository.js';
 import * as userRepository from '../repositories/userRepository.js';
 import { ServiceError } from '../utils/errors.js';
@@ -30,21 +31,23 @@ async function toUserCards(ids, viewerId) {
 
 export async function getProfile(username, viewerId) {
   const user = await requireUserByUsername(username);
-  const [followers, following, isFollowing, reviews, diaryEntries, diaryVisibility] = await Promise.all([
+  const isOwnProfile = viewerId === user.id;
+  const [followers, following, isFollowing, reviews, diaryEntries, diaryVisibility, lists] = await Promise.all([
     followRepository.countFollowers(user.id),
     followRepository.countFollowing(user.id),
     viewerId ? followRepository.isFollowing(viewerId, user.id) : false,
     reviewRepository.countReviewsByUser(user.id),
     diaryRepository.countEntriesByUser(user.id),
     diaryRepository.getDiaryVisibility(user.id),
+    listRepository.countListsByUser(user.id, { publicOnly: !isOwnProfile }),
   ]);
-  const isOwnProfile = viewerId === user.id;
   return {
     ...toPublicUser(user),
     stats: {
       reviews,
       // Private diaries don't reveal even how many entries they have.
       diaryEntries: diaryVisibility === 'public' || isOwnProfile ? diaryEntries : null,
+      lists,
       followers,
       following,
     },

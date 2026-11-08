@@ -5,9 +5,10 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { fetchTargetReviews } from '../api/music.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { formatRating } from '../utils/format.js';
+import AddToListPanel from './AddToListPanel.jsx';
 import Alert from './Alert.jsx';
 import DiaryEntryForm from './DiaryEntryForm.jsx';
-import { DiaryIcon, EditIcon } from './Icons.jsx';
+import { DiaryIcon, EditIcon, ListsIcon } from './Icons.jsx';
 import ReviewCard from './ReviewCard.jsx';
 import ReviewForm from './ReviewForm.jsx';
 import { StarRating } from './StarRating.jsx';
@@ -58,7 +59,7 @@ export function TargetActions({ targetType, mbid, title, reviewsData, onReviewSa
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [panel, setPanel] = useState(null); // 'review' | 'diary' | null
+  const [panel, setPanel] = useState(null); // 'review' | 'diary' | 'list' | null
   const [notice, setNotice] = useState(null);
 
   const ownReview = reviewsData?.reviews.find((review) => review.id === reviewsData.viewerReviewId) ?? null;
@@ -67,7 +68,7 @@ export function TargetActions({ targetType, mbid, title, reviewsData, onReviewSa
   function open(next) {
     if (!isAuthenticated) {
       navigate('/login', {
-        state: { from: location.pathname, notice: `Log in to ${next === 'review' ? 'review' : 'log'} this ${noun}.` },
+        state: { from: location.pathname, notice: `Log in to ${{ review: 'review', diary: 'log', list: 'save' }[next]} this ${noun}.` },
       });
       return;
     }
@@ -97,6 +98,15 @@ export function TargetActions({ targetType, mbid, title, reviewsData, onReviewSa
         >
           <DiaryIcon size={16} />
           Add to Diary
+        </button>
+        <button
+          type="button"
+          className="btn btn-outline btn-block"
+          onClick={() => open('list')}
+          aria-expanded={panel === 'list'}
+        >
+          <ListsIcon size={16} />
+          Add to List
         </button>
       </div>
 
@@ -132,6 +142,8 @@ export function TargetActions({ targetType, mbid, title, reviewsData, onReviewSa
           }}
         />
       )}
+
+      {panel === 'list' && <AddToListPanel targetType={targetType} mbid={mbid} title={title} onClose={() => setPanel(null)} />}
     </aside>
   );
 }

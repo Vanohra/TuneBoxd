@@ -143,3 +143,50 @@ export const DiscIcon = (props) => (
     <circle cx="12" cy="12" r="2.5" />
   </Icon>
 );
+
+export const ChartIcon = (props) => (
+  <Icon {...props}>
+    <path d="M4 20h16" />
+    <path d="M7 16v-5M12 16V7M17 16v-8" />
+  </Icon>
+);
+
+export const SparkleIcon = (props) => (
+  <Icon {...props}>
+    <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" />
+    <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" />
+  </Icon>
+);
+
+export const ShieldIcon = (props) => (
+  <Icon {...props}>
+    <path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z" />
+  </Icon>
+);
+
+export const FlagIcon = (props) => (
+  <Icon {...props}>
+    <path d="M5 21V4M5 4h11l-2 4 2 4H5" />
+  </Icon>
+);
+
+export const ArrowUpIcon = (props) => (
+  <Icon {...props}>
+    <path d="M12 19V5M6 11l6-6 6 6" />
+  </Icon>
+);
+
+export const ArrowDownIcon = (props) => (
+  <Icon {...props}>
+    <path d="M12 5v14M6 13l6 6 6-6" />
+  </Icon>
+);
+
+export const RefreshIcon = (props) => (
+  <Icon {...props}>
+    <path d="M20 11a8 8 0 0 0-14.6-4.5L4 8" />
+    <path d="M4 4v4h4" />
+    <path d="M4 13a8 8 0 0 0 14.6 4.5L20 16" />
+    <path d="M20 20v-4h-4" />
+  </Icon>
+);

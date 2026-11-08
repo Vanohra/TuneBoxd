@@ -109,3 +109,18 @@ export function validateDiaryEntry({ listenedOn, notes }, today) {
   };
   return result(fieldErrors, false);
 }
+
+export const LIST_TITLE_MAX_LENGTH = 100;
+export const LIST_DESCRIPTION_MAX_LENGTH = 1000;
+export const REPORT_DETAILS_MAX_LENGTH = 500;
+
+export function validateList({ title, description = '' }) {
+  const fieldErrors = {};
+  const cleanTitle = title.trim();
+  if (!cleanTitle) fieldErrors.title = 'List title cannot be empty.';
+  else if (cleanTitle.length > LIST_TITLE_MAX_LENGTH) fieldErrors.title = `Titles must be ${LIST_TITLE_MAX_LENGTH} characters or fewer.`;
+  if (description.trim().length > LIST_DESCRIPTION_MAX_LENGTH) {
+    fieldErrors.description = `Descriptions must be ${LIST_DESCRIPTION_MAX_LENGTH} characters or fewer.`;
+  }
+  return { fieldErrors, error: Object.values(fieldErrors)[0] ?? null };
+}
