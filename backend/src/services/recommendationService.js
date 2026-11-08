@@ -7,7 +7,7 @@
  *   2. people you follow rated these 4+ stars
  *   3. more from artists you log and rate highly
  *   4. the community's highest-rated albums (fallback for new members)
- * Step 2 (when ANTHROPIC_API_KEY is set): Claude rewrites each rule-based
+ * Step 2 (when GEMINI_API_KEY is set): Gemini rewrites each rule-based
  * reason as one friendly, specific sentence. If that fails the rule-based
  * reasons are kept.
  *
@@ -71,7 +71,7 @@ const REASONS_SCHEMA = {
   additionalProperties: false,
 };
 
-/** Claude rewrites the reasons using the user's taste profile. Returns null on any failure. */
+/** Gemini rewrites the reasons using the user's taste profile. Returns null on any failure. */
 async function writeReasonsWithAi(userId, candidates, targets) {
   const [topArtists, topAlbums] = await Promise.all([
     statsRepository.getTopArtists(userId, undefined, 8),

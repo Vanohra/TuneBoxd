@@ -81,7 +81,7 @@ function Recommendations() {
         <p className="field-hint">
           <SparkleIcon size={13} />{' '}
           {data.aiEnabled
-            ? 'Picked from TuneBoxd ratings, follows and your diary; explanations written by Claude (AI).'
+            ? 'Picked from TuneBoxd ratings, follows and your diary; explanations written by AI (Google Gemini).'
             : 'Picked from TuneBoxd ratings, follows and your diary.'}
         </p>
       )}
@@ -146,7 +146,7 @@ function Summaries() {
     <section className="card">
       <h2 className="section-title">Listening & review summaries</h2>
       <p className="muted small">
-        A short recap of what you logged, rated and reviewed in a period{aiEnabled ? ', written by Claude (AI)' : ''}. Only you can see your summaries.
+        A short recap of what you logged, rated and reviewed in a period{aiEnabled ? ', written by AI (Google Gemini)' : ''}. Only you can see your summaries.
       </p>
 
       <form className="summary-form" onSubmit={handleGenerate} noValidate>

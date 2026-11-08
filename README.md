@@ -13,7 +13,7 @@ Currently built:
 - **Sprint 4:** custom lists of albums and songs (public or private, reorderable),
   reporting reviews and an administrator console (report queue, remove/restore reviews,
   suspend/reactivate accounts, grant admin), listening statistics, personalized
-  recommendations and listening/review summaries (optionally written by Claude).
+  recommendations and listening/review summaries (written by Google Gemini's free tier when a key is set).
 
 All user data is stored in **MySQL on Amazon RDS** (database `music_review_app`,
 schema in [database/schema.sql](database/schema.sql)). See
@@ -85,8 +85,8 @@ so the browser sees one origin and the session cookie just works (no CORS setup)
 | `NODE_ENV`       | unset                       | `production` turns on `Secure` cookies      |
 | `MUSICBRAINZ_CONTACT` | project GitHub URL     | Email/URL in the MusicBrainz User-Agent     |
 | `DB_SSL`         | unset                       | `true` = TLS to RDS (set on Render)         |
-| `ANTHROPIC_API_KEY` | unset                    | Optional. Claude writes recommendation reasons and summaries; without it TuneBoxd uses its own rule-based text |
-| `ANTHROPIC_MODEL` | `claude-opus-5-5`          | Optional model override for the AI features |
+| `GEMINI_API_KEY` | unset                       | Optional, free from https://aistudio.google.com/apikey. Gemini writes recommendation reasons and summaries; without it TuneBoxd uses its own rule-based text |
+| `GEMINI_MODEL`   | `gemini-flash-latest`       | Optional model override for the AI features |
 
 ### Database migrations and the first administrator
 

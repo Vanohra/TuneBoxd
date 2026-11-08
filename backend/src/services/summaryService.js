@@ -2,8 +2,8 @@
  * Review and listening summaries (feature #14).
  *
  * The user picks a period (up to a year). TuneBoxd gathers what they logged,
- * rated and reviewed in it and writes a short summary: by Claude when
- * ANTHROPIC_API_KEY is set, otherwise from a template. Summaries are saved in
+ * rated and reviewed in it and writes a short summary: by Gemini when
+ * GEMINI_API_KEY is set, otherwise from a template. Summaries are saved in
  * `listening_summaries` and are private to their owner.
  */
 import * as recommendationRepository from '../repositories/recommendationRepository.js';

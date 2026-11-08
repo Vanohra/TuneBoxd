@@ -34,6 +34,6 @@ services:
         sync: false
       - key: MUSICBRAINZ_CONTACT
         sync: false
-      # Optional: enables Claude-written recommendations and summaries.
-      - key: ANTHROPIC_API_KEY
+      # Optional: free Google Gemini key for AI-written recommendations and summaries.
+      - key: GEMINI_API_KEY
         sync: false

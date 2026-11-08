@@ -1,54 +1,67 @@
 /**
- * Thin wrapper around the Claude API for the AI features (#13, #14).
+ * Thin wrapper around the Google Gemini API (free tier) for the AI features
+ * (#13 recommendation reasons, #14 listening summaries).
  *
  * The AI features always work without it: recommendations are chosen from
  * TuneBoxd's own data and summaries are built from listening statistics. When
- * ANTHROPIC_API_KEY is set, Claude rewrites that output in natural language.
- * Any failure (no key, network, rate limit, refusal, bad JSON) returns null and
- * the caller keeps its rule-based text, so the API never breaks a page.
+ * GEMINI_API_KEY is set, Gemini rewrites that output in natural language.
+ * Any failure (no key, network, rate limit, safety block, bad JSON) returns
+ * null and the caller keeps its rule-based text, so the API never breaks a page.
  *
  * Only aggregated music data is sent (titles, artists, counts, ratings, the
  * user's own review excerpts). Never emails, passwords or other users' data.
+ * Google may use free-tier prompts to improve its products.
  */
-import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config.js';
 
-let client = null;
+const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const TIMEOUT_MS = 30_000;
 
 export function isAiConfigured() {
   return Boolean(config.ai.apiKey);
 }
 
-function getClient() {
-  if (!client) client = new Anthropic({ apiKey: config.ai.apiKey, timeout: 30_000, maxRetries: 1 });
-  return client;
-}
-
 /**
- * Asks Claude for JSON matching `schema` (structured outputs).
+ * Asks Gemini for JSON matching `schema` (structured output).
  * @returns the parsed object, or null if the AI isn't available or anything failed.
  */
 export async function generateJson({ system, prompt, schema, maxTokens = 2000 }) {
   if (!isAiConfigured()) return null;
   try {
-    const response = await getClient().beta.messages.create({
-      model: config.ai.model,
-      max_tokens: maxTokens,
-      // Short, low-stakes writing: low effort keeps it fast and cheap.
-      output_config: { effort: 'low', format: { type: 'json_schema', schema } },
-      // If the model declines, the API retries on a fallback model in the same call.
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      system,
-      messages: [{ role: 'user', content: prompt }],
+    const response = await fetch(`${API_BASE}/${encodeURIComponent(config.ai.model)}:generateContent`, {
+      method: 'POST',
+      // The key goes in a header, never in the URL (URLs end up in logs).
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': config.ai.apiKey },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          maxOutputTokens: maxTokens,
+          responseMimeType: 'application/json',
+          responseJsonSchema: schema,
+        },
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    if (response.stop_reason === 'refusal' || response.stop_reason === 'max_tokens') return null;
-    const text = response.content.find((block) => block.type === 'text')?.text;
+    if (!response.ok) {
+      // Log the status only; never the prompt (it contains user data) or the key.
+      console.error(`[ai] Gemini API error ${response.status}`);
+      return null;
+    }
+    const data = await response.json();
+    if (data.promptFeedback?.blockReason) {
+      console.error(`[ai] Gemini blocked the prompt (${data.promptFeedback.blockReason})`);
+      return null;
+    }
+    const candidate = data.candidates?.[0];
+    if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
+      console.error(`[ai] Gemini stopped early (${candidate.finishReason})`);
+      return null;
+    }
+    const text = candidate?.content?.parts?.map((part) => part.text ?? '').join('');
     return text ? JSON.parse(text) : null;
   } catch (err) {
-    // Log the kind of failure only; never the prompt (it contains user data).
-    if (err instanceof Anthropic.APIError) console.error(`[ai] Claude API error ${err.status ?? ''} ${err.name}`);
-    else console.error(`[ai] ${err.name}: ${err.message}`);
+    console.error(`[ai] ${err.name}: ${err.message}`);
     return null;
   }
 }

@@ -8,12 +8,12 @@
  * Like api.test.js it registers throwaway users ("s4test_...") and deletes
  * them at the end; their lists, reports, recommendations and summaries go
  * with them through ON DELETE CASCADE. The AI features are tested with their
- * rule-based output: ANTHROPIC_API_KEY is cleared for this run.
+ * rule-based output: GEMINI_API_KEY is cleared for this run.
  */
 import assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
 
-delete process.env.ANTHROPIC_API_KEY;
+delete process.env.GEMINI_API_KEY;
 const { default: app } = await import('../src/app.js');
 const { pool, verifyDatabaseConnection } = await import('../src/db.js');
 
