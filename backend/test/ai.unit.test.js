@@ -3,6 +3,7 @@
 // No network or database needed.
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
+import { extractJsonText } from '../src/services/aiClient.js';
 import { sanitizeDigest } from '../src/services/digestService.js';
 import { luceneQuote, namesMatch, normalizeName, pickReleaseGroup, validatePrompt } from '../src/services/discoveryService.js';
 import { sanitizeAssessment } from '../src/services/moderationService.js';
@@ -73,5 +74,15 @@ describe('cleaning AI answers', () => {
     const digest = sanitizeDigest({ summary: 'Loved.', liked: [' Drums ', '', 'a', 'b', 'c', 'd'], disliked: 'nope', overall: 'ecstatic' });
     assert.deepEqual(digest, { summary: 'Loved.', liked: ['Drums', 'a', 'b', 'c'], disliked: [], overall: 'mixed' });
     assert.equal(sanitizeDigest({ summary: '  ', liked: [] }), null);
+  });
+});
+
+describe('reading Gemini responses', () => {
+  test('skips thought parts, joins text parts and strips code fences', () => {
+    const candidate = {
+      content: { parts: [{ text: 'thinking...', thought: true }, { text: '```json\n{"a":' }, { text: '1}\n```' }] },
+    };
+    assert.equal(extractJsonText(candidate), '{"a":1}');
+    assert.equal(extractJsonText({}), '');
   });
 });

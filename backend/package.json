@@ -9,6 +9,7 @@
     "start": "node src/server.js",
     "migrate": "node scripts/migrate.js",
     "make-admin": "node scripts/make-admin.js",
+    "check-ai": "node scripts/check-ai.js",
     "test": "node --test --test-concurrency=1 --test-reporter=spec test/*.test.js"
   },
   "engines": {

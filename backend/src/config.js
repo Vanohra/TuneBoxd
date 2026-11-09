@@ -42,10 +42,13 @@ export const config = {
   },
   // Optional: Google Gemini (free tier) writes recommendation reasons and
   // listening summaries. Without a key those features use TuneBoxd's own
-  // rule-based text. gemini-flash-latest always points at Google's current Flash model.
+  // rule-based text. Flash-Lite answers in about a second; the bigger Flash
+  // models think for so long that requests time out.
   ai: {
     apiKey: process.env.GEMINI_API_KEY || '',
-    model: process.env.GEMINI_MODEL || 'gemini-flash-latest',
+    model: process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
+    // 'low' keeps responses fast. Set GEMINI_THINKING=off to send no thinking setting.
+    thinkingLevel: process.env.GEMINI_THINKING === 'off' ? null : process.env.GEMINI_THINKING || 'low',
   },
   // MusicBrainz asks every client to send a descriptive User-Agent with a way to
   // contact the developers: https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting

@@ -90,7 +90,7 @@ so the browser sees one origin and the session cookie just works (no CORS setup)
 | `MUSICBRAINZ_CONTACT` | project GitHub URL     | Email/URL in the MusicBrainz User-Agent     |
 | `DB_SSL`         | unset                       | `true` = TLS to RDS (set on Render)         |
 | `GEMINI_API_KEY` | unset                       | Optional, free from https://aistudio.google.com/apikey. Gemini writes recommendation reasons and summaries; without it TuneBoxd uses its own rule-based text |
-| `GEMINI_MODEL`   | `gemini-flash-latest`       | Optional model override for the AI features |
+| `GEMINI_MODEL`   | `gemini-3.5-flash-lite`     | Optional model override for the AI features |
 
 ### Database migrations and the first administrator
 
