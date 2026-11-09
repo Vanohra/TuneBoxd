@@ -71,10 +71,9 @@ export const BIO_MAX_LENGTH = 160;
 // Avatars arrive as small base64 data URLs (the frontend resizes them to 256×256).
 // SVG is deliberately excluded.
 const AVATAR_PATTERN = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/;
-// users.avatar_url is VARCHAR(500), which is far too small for a data URL
-// (~15–40 KB). Until images move to file storage (or the column is widened),
-// uploads are rejected here with a friendly message instead of a DB error.
-export const AVATAR_MAX_LENGTH = 500;
+// users.avatar_url is MEDIUMTEXT (migration 003). A resized 256×256 JPEG data
+// URL is ~15–40 KB; this cap stays well inside the 400kb body limit on /api/me.
+export const AVATAR_MAX_LENGTH = 350_000;
 
 /**
  * Validates and normalizes profile edits.
@@ -105,7 +104,7 @@ export function validateProfileUpdate(input = {}) {
   } else if (input.avatarUrl !== undefined) {
     avatarUrl = asString(input.avatarUrl);
     if (avatarUrl.length > AVATAR_MAX_LENGTH) {
-      fieldErrors.avatarUrl = 'Profile picture uploads aren’t available yet. Please try again later.';
+      fieldErrors.avatarUrl = 'That picture is too large. Please choose a smaller image.';
     } else if (!AVATAR_PATTERN.test(avatarUrl)) {
       fieldErrors.avatarUrl = 'Profile picture must be a PNG, JPEG or WebP image.';
     }

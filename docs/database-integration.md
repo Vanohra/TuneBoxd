@@ -56,22 +56,14 @@ adds `email`, `role`) and `toPublicUser` (others). Neither includes the hash.
   "can't reach its database" response. Other SQL errors become a generic 500. Logs
   contain only the MySQL error code and message, never SQL text, values or credentials.
 
-## Schema note: `users.avatar_url` is VARCHAR(500)
+## Schema note: `users.avatar_url` is MEDIUMTEXT
 
 The Edit Profile page sends the profile picture as a base64 data URL (a resized
-256×256 JPEG, roughly 15–40 KB). That cannot fit in 500 characters, so
-`utils/validation.js` currently rejects uploads with "Profile picture uploads
-aren't available yet." Display name, bio and everything else work normally.
-
-Two ways to fix it (team decision, not done automatically):
-
-1. **Minimal schema change** (simplest for now):
-   ```sql
-   ALTER TABLE users MODIFY avatar_url MEDIUMTEXT NULL;
-   ```
-   then set `AVATAR_MAX_LENGTH` in `backend/src/utils/validation.js` back to `350_000`.
-2. **Keep the schema** and upload images to object storage (e.g. S3), storing
-   only the resulting URL (fits in 500 chars) in `avatar_url`.
+256×256 JPEG, roughly 15–40 KB). The column was originally VARCHAR(500), which
+rejected every upload; migration `003_avatar_url_mediumtext.sql` widens it to
+MEDIUMTEXT, and `AVATAR_MAX_LENGTH` in `backend/src/utils/validation.js` caps
+avatars at 350,000 characters. A later option is uploading images to object
+storage (e.g. S3) and storing only the URL.
 
 ## Sessions
 

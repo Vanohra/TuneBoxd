@@ -28,7 +28,9 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     display_name VARCHAR(100),
     bio TEXT,
-    avatar_url VARCHAR(500),
+    -- MEDIUMTEXT holds a resized profile picture as a data URL
+    -- (database/migrations/003_avatar_url_mediumtext.sql).
+    avatar_url MEDIUMTEXT,
 
     role ENUM('user', 'admin') NOT NULL DEFAULT 'user',
 
