@@ -131,7 +131,7 @@ export default function AlbumPage() {
               </p>
             )}
           </section>
-          <ReviewsSection {...reviews} noun="album" />
+          <ReviewsSection {...reviews} noun="album" targetType="album" mbid={album.mbid} />
         </div>
         <TargetActions
           targetType="album"

@@ -7,6 +7,7 @@ import AlbumPage from './pages/AlbumPage.jsx';
 import ArtistPage from './pages/ArtistPage.jsx';
 import Community from './pages/Community.jsx';
 import Diary from './pages/Diary.jsx';
+import Discover from './pages/Discover.jsx';
 import EditProfile from './pages/EditProfile.jsx';
 import ForYou from './pages/ForYou.jsx';
 import Home from './pages/Home.jsx';
@@ -57,6 +58,7 @@ export default function App() {
               <Route path="/lists" element={<Lists />} />
               <Route path="/stats" element={<Stats />} />
               <Route path="/for-you" element={<ForYou />} />
+              <Route path="/discover" element={<Discover />} />
             </Route>
 
             <Route element={<AdminRoute />}>

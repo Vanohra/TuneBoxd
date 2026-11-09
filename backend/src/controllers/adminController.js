@@ -1,8 +1,14 @@
 import * as adminService from '../services/adminService.js';
 
-// GET /api/admin/reports?status=pending|dismissed|removed|reviewed|all
+// GET /api/admin/reports?status=pending|dismissed|removed|reviewed|all&sort=date|severity
 export async function listReports(req, res) {
-  res.json(await adminService.listReports(req.query.status));
+  res.json(await adminService.listReports(req.query.status, req.query.sort));
+}
+
+// POST /api/admin/reports/:id/analyze: run the AI moderation assistant on the reported review
+export async function analyzeReport(req, res) {
+  const report = await adminService.analyzeReport(req.params.id);
+  res.json({ report, message: 'AI analysis updated.' });
 }
 
 // POST /api/admin/reports/:id/dismiss: keep the review

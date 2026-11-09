@@ -1,3 +1,4 @@
+import * as discoveryService from '../services/discoveryService.js';
 import * as recommendationService from '../services/recommendationService.js';
 import * as statsService from '../services/statsService.js';
 import * as summaryService from '../services/summaryService.js';
@@ -32,4 +33,9 @@ export async function createSummary(req, res) {
 export async function deleteSummary(req, res) {
   await summaryService.deleteSummary(req.currentUser.id, req.params.id);
   res.json({ message: 'Summary deleted.' });
+}
+
+// POST /api/insights/discover (requireAuth) body: { prompt }: Ask TuneBoxd
+export async function discover(req, res) {
+  res.json(await discoveryService.discover(req.currentUser.id, req.body ?? {}));
 }

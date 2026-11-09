@@ -35,3 +35,8 @@ export async function createSummary({ periodStart, periodEnd }) {
 export function deleteSummary(id) {
   return apiRequest(`/insights/summaries/${id}`, { method: 'DELETE' });
 }
+
+/** Ask TuneBoxd: { prompt, interpretation, results: [album + reason + alreadyKnown], suggestedCount } */
+export function discoverMusic(prompt) {
+  return apiRequest('/insights/discover', { method: 'POST', body: { prompt } });
+}

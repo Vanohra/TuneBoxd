@@ -217,9 +217,14 @@ export default function ForYou() {
           <h1 className="page-title">For You</h1>
           <p className="page-subtitle">Music picked for your taste, and recaps of your listening.</p>
         </div>
-        <Link to="/stats" className="btn btn-outline">
-          View my stats
-        </Link>
+        <span className="inline-actions">
+          <Link to="/discover" className="btn btn-primary">
+            Ask AI for music
+          </Link>
+          <Link to="/stats" className="btn btn-outline">
+            View my stats
+          </Link>
+        </span>
       </div>
       <Recommendations />
       <Summaries />

@@ -29,3 +29,9 @@ export function fetchTargetReviews(targetType, mbid) {
   const collection = targetType === 'song' ? 'songs' : 'albums';
   return apiRequest(`/music/${collection}/${encodeURIComponent(mbid)}/reviews`);
 }
+
+/** { digest: { summary, liked, disliked, overall, reviewCount, generatedAt } | null, aiEnabled } */
+export function fetchTargetDigest(targetType, mbid) {
+  const collection = targetType === 'song' ? 'songs' : 'albums';
+  return apiRequest(`/music/${collection}/${encodeURIComponent(mbid)}/digest`);
+}

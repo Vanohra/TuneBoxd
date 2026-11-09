@@ -11,6 +11,7 @@ router.get('/reports', adminController.listReports);
 router.post('/reports/:id/dismiss', adminController.dismissReport);
 router.post('/reports/:id/remove', adminController.removeReview);
 router.post('/reports/:id/restore', adminController.restoreReview);
+router.post('/reports/:id/analyze', adminController.analyzeReport);
 
 router.get('/users', adminController.listUsers);
 router.patch('/users/:id', adminController.updateUser);

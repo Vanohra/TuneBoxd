@@ -9,6 +9,7 @@ import * as reportRepository from '../repositories/reportRepository.js';
 import { DuplicateReportError } from '../repositories/reportRepository.js';
 import { ServiceError } from '../utils/errors.js';
 import { parseId, REPORT_REASONS, validateReport } from '../utils/validation.js';
+import { assessInBackground } from './moderationService.js';
 import { assertReviewVisible } from './reviewService.js';
 
 const ALREADY_REPORTED = 'You’ve already reported this review. An administrator will look at it.';
@@ -29,6 +30,8 @@ export async function reportReview(userId, rawReviewId, input) {
     if (err instanceof DuplicateReportError) throw new ServiceError(409, ALREADY_REPORTED);
     throw err;
   }
+  // The AI moderation assistant reads the review (and every report on it) in the background.
+  assessInBackground(reviewId);
 }
 
 /** Reason codes and labels for the report form. */

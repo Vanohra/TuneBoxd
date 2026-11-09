@@ -14,6 +14,10 @@ Currently built:
   reporting reviews and an administrator console (report queue, remove/restore reviews,
   suspend/reactivate accounts, grant admin), listening statistics, personalized
   recommendations and listening/review summaries (written by Google Gemini's free tier when a key is set).
+- **AI features (Google Gemini, free tier):** *Ask TuneBoxd* natural-language discovery (Gemini
+  suggests albums, every one verified on MusicBrainz), an AI moderation assistant that assesses
+  reported reviews for admins (verdict, severity, suggested action), and an AI "What listeners are
+  saying" digest of each album's reviews. All need `GEMINI_API_KEY`; without it they switch off cleanly.
 
 All user data is stored in **MySQL on Amazon RDS** (database `music_review_app`,
 schema in [database/schema.sql](database/schema.sql)). See
@@ -120,7 +124,8 @@ Runs unit tests (validation, MusicBrainz mapping) and end-to-end API tests again
 **real RDS database and live MusicBrainz** (about a minute, because of the 1 request/second
 limit). The API tests create throwaway users named `s3test_*` / `s4test_*` and delete them at the end.
 `test/sprint4.api.test.js` covers lists, privacy, reports, moderation, admin accounts,
-statistics, recommendations and summaries.
+statistics, recommendations and summaries. `test/ai.api.test.js` covers the AI features
+with a fake Gemini (it never calls Google).
 
 ## API
 
@@ -163,8 +168,11 @@ Sprint 4 adds:
 | POST | `/api/insights/recommendations/refresh` | Yes | Regenerate recommendations |
 | GET / POST | `/api/insights/summaries` | Yes | List / create `{ periodStart, periodEnd }` (max one year) |
 | DELETE | `/api/insights/summaries/:id` | Yes (owner) | Delete a summary |
-| GET | `/api/admin/reports?status=` | Admin | `pending` (default), `removed`, `dismissed`, `reviewed`, `all` |
+| GET | `/api/admin/reports?status=&sort=` | Admin | `pending` (default), `removed`, `dismissed`, `reviewed`, `all`; `sort=severity` for the AI's most serious first |
 | POST | `/api/admin/reports/:id/dismiss` \| `remove` \| `restore` | Admin | Keep, hide or un-hide the reported review |
+| POST | `/api/insights/discover` | Yes | Ask TuneBoxd `{ prompt }` → verified album suggestions (15/hour per user) |
+| GET | `/api/music/albums/:mbid/digest`, `/api/music/songs/:mbid/digest` | No | AI review digest (cached; null under 2 reviews) |
+| POST | `/api/admin/reports/:id/analyze` | Admin | Run the AI moderation assistant on the reported review |
 | GET | `/api/admin/users?q=` | Admin | Accounts with review and flagged counts |
 | PATCH | `/api/admin/users/:id` | Admin | `{ accountStatus?, role? }` (not yourself; never the last active admin) |
 

@@ -80,7 +80,7 @@ export default function SongPage() {
       </section>
 
       <div className="music-layout">
-        <ReviewsSection {...reviews} noun="song" />
+        <ReviewsSection {...reviews} noun="song" targetType="song" mbid={song.mbid} />
         <TargetActions targetType="song" mbid={song.mbid} title={song.title} reviewsData={reviews.data} onReviewSaved={reviews.reload} />
       </div>
 

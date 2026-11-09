@@ -139,6 +139,23 @@ an admin you can promote others from **Admin → Accounts → Make admin**.
 
 **SQL:** **Q9** (saved recommendations) and **Q10** (saved summaries).
 
+### Step 7: The AI features (~3 min)
+
+Needs the latest deploy and `GEMINI_API_KEY` in Render.
+
+1. **Ask AI** (sidebar): click an example like *"Moody indie albums for a rainy night, like Radiohead"*
+   or type your own. It takes about 10 seconds. Explain: Gemini suggests albums, and TuneBoxd checks
+   each one on MusicBrainz, so only real albums appear, each with a reason. Albums you already
+   know are tagged "In your history". Click one to open its page.
+2. **Review digest:** open an album with 2+ reviews. At the top of Reviews, "What listeners are saying"
+   summarizes all the reviews: the overall mood, what was praised and what was criticized.
+3. **AI moderation assistant:** in Window B, report a spammy review. In Window A, go to **Admin → Reports**:
+   the AI has already read it and shows a verdict (e.g. *Likely spam*), a severity score, a suggested
+   action and an explanation. Switch **Sort** to *Most serious first (AI)*. Stress that the AI only
+   advises and the admin still decides.
+
+**SQL:** **Q11** (AI assessments) and **Q12** (review digests).
+
 ### Closing line
 
 > "Every feature in the client requirements table is now implemented and stored in our RDS
@@ -291,6 +308,27 @@ ORDER BY ls.generated_at DESC;
 
 ---
 
+**Q11. AI moderation assessments**
+
+```sql
+SELECT a.review_id, a.verdict, a.severity, a.suggested_action, a.explanation, a.analyzed_at
+FROM review_ai_assessments a
+ORDER BY a.analyzed_at DESC;
+```
+
+**Q12. AI review digests**
+
+```sql
+SELECT COALESCE(al.title, s.title) AS reviewed_item, d.overall_sentiment, d.review_count,
+       LEFT(d.summary_text, 100) AS summary_preview, d.generated_at
+FROM review_digests d
+LEFT JOIN albums al ON al.album_id = d.album_id
+LEFT JOIN songs  s  ON s.song_id   = d.song_id
+ORDER BY d.generated_at DESC;
+```
+
+---
+
 ## 5. If something goes wrong
 
 | What you see | Fix |
@@ -300,4 +338,6 @@ ORDER BY ls.generated_at DESC;
 | "Nothing to recommend yet" | You've already rated/logged every album others liked. Have Window B rate a new album 4–5 stars, then **Refresh**. |
 | Summary says you logged nothing | Pick a period that includes your diary dates. |
 | Summary/recommendation text looks like a template | No Gemini key or quota hit. It still works; just say it's the rule-based mode. |
+| Ask AI says "isn't switched on" / no digest / no AI panel | `GEMINI_API_KEY` missing in Render, or the latest code isn't deployed. |
+| Ask AI says "asked a lot this hour" | 15 requests per user per hour (protects the free quota). Use another account. |
 | Workbench can't connect (timeout) | Add your current IP in the `tuneboxd-team-ips` security group. |

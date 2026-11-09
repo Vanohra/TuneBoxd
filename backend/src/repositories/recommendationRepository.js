@@ -109,6 +109,18 @@ export async function findPopularPicks(userId, limit = 10) {
   return rows.map((row) => ({ albumId: row.album_id, average: Number(row.average), ratings: Number(row.ratings) }));
 }
 
+/** The subset of `mbids` (album MBIDs) this user has already rated, logged or listed. */
+export async function findKnownAlbumMbids(userId, mbids) {
+  if (mbids.length === 0) return new Set();
+  const placeholders = mbids.map(() => '?').join(', ');
+  const [rows] = await pool.execute(
+    `SELECT a.external_id FROM albums a
+     WHERE a.external_id IN (${placeholders}) AND NOT (${NOT_KNOWN('a.album_id')})`,
+    [...mbids, ...knownParams(userId)],
+  );
+  return new Set(rows.map((row) => row.external_id));
+}
+
 /** Album details (as `target` objects) keyed by album_id. */
 export async function findAlbumTargets(albumIds) {
   if (albumIds.length === 0) return new Map();

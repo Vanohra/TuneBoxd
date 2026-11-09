@@ -31,12 +31,16 @@ const SELECT_REPORTS = `
     au.avatar_url AS author_avatar_url, au.account_status AS author_status,
     (SELECT COUNT(*) FROM review_reports o WHERE o.review_id = rr.review_id) AS report_count,
     EXISTS (SELECT 1 FROM review_reports o WHERE o.review_id = rr.review_id AND o.status = 'removed') AS review_removed,
+    t.updated_at AS review_updated_at,
+    ai.verdict AS ai_verdict, ai.severity AS ai_severity, ai.suggested_action AS ai_action,
+    ai.explanation AS ai_explanation, ai.analyzed_at AS ai_analyzed_at, ai.review_updated_at AS ai_review_updated_at,
     ${TARGET_COLUMNS}
   FROM review_reports rr
   JOIN reviews t ON t.review_id = rr.review_id
   JOIN users au ON au.user_id = t.user_id
   JOIN users rep ON rep.user_id = rr.reported_by
   LEFT JOIN users mod_u ON mod_u.user_id = rr.reviewed_by
+  LEFT JOIN review_ai_assessments ai ON ai.review_id = rr.review_id
   ${TARGET_JOINS}`;
 
 function toReport(row) {
@@ -63,6 +67,18 @@ function toReport(row) {
         accountStatus: row.author_status,
       },
       target: toTarget(row),
+      // Gemini's moderation read of this review (see moderationService), or null.
+      aiAssessment: row.ai_verdict
+        ? {
+            verdict: row.ai_verdict,
+            severity: Number(row.ai_severity),
+            suggestedAction: row.ai_action,
+            explanation: row.ai_explanation,
+            analyzedAt: row.ai_analyzed_at,
+            // The review was edited after the AI read it.
+            isStale: Boolean(row.ai_review_updated_at && row.review_updated_at > row.ai_review_updated_at),
+          }
+        : null,
     },
   };
 }
@@ -88,9 +104,14 @@ export async function hasReported(reviewId, userId) {
   return rows.length > 0;
 }
 
-/** `status` null = every report. Pending ones oldest first (a queue); others newest first. */
-export async function listReports({ status = null } = {}) {
-  const order = status === 'pending' ? 'rr.created_at ASC, rr.report_id ASC' : 'rr.created_at DESC, rr.report_id DESC';
+/**
+ * `status` null = every report. Pending ones oldest first (a queue); others
+ * newest first. `sort: 'severity'` puts the AI's most serious reports first.
+ */
+export async function listReports({ status = null, sort = 'date' } = {}) {
+  const byDate = status === 'pending' ? 'rr.created_at ASC, rr.report_id ASC' : 'rr.created_at DESC, rr.report_id DESC';
+  // 'severity': most serious first by the AI's score; reports without a score go last.
+  const order = sort === 'severity' ? `ai.severity IS NULL, ai.severity DESC, ${byDate}` : byDate;
   const [rows] = status
     ? await pool.execute(`${SELECT_REPORTS} WHERE rr.status = ? ORDER BY ${order} LIMIT 200`, [status])
     : await pool.execute(`${SELECT_REPORTS} ORDER BY ${order} LIMIT 200`);

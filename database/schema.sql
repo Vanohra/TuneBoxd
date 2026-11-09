@@ -554,3 +554,64 @@ CREATE TABLE listening_summaries (
         REFERENCES users(user_id)
         ON DELETE CASCADE
 ) ENGINE = InnoDB;
+
+
+-- ============================================================
+-- 18. AI REVIEW ASSESSMENTS
+-- Google Gemini's read of a reported review, shown to administrators
+-- (database/migrations/004_ai_moderation_and_digests.sql)
+-- ============================================================
+
+CREATE TABLE review_ai_assessments (
+    review_id INT PRIMARY KEY,
+
+    verdict VARCHAR(30) NOT NULL,
+    severity TINYINT UNSIGNED NOT NULL,
+    suggested_action VARCHAR(20) NOT NULL,
+    explanation VARCHAR(600) NOT NULL,
+
+    model VARCHAR(100),
+    review_updated_at TIMESTAMP NULL,
+    analyzed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_assessment_severity CHECK (severity <= 100),
+
+    FOREIGN KEY (review_id)
+        REFERENCES reviews(review_id)
+        ON DELETE CASCADE
+) ENGINE = InnoDB;
+
+
+-- ============================================================
+-- 19. REVIEW DIGESTS
+-- Cached AI summary of all reviews of an album or song
+-- ============================================================
+
+CREATE TABLE review_digests (
+    digest_id INT AUTO_INCREMENT PRIMARY KEY,
+
+    album_id INT,
+    song_id INT,
+
+    summary_text TEXT NOT NULL,
+    liked_points TEXT,
+    disliked_points TEXT,
+    overall_sentiment VARCHAR(20) NOT NULL,
+
+    review_count INT UNSIGNED NOT NULL,
+    fingerprint VARCHAR(64) NOT NULL,
+    model VARCHAR(100),
+    generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_digest_target CHECK (
+        (album_id IS NOT NULL AND song_id IS NULL) OR (album_id IS NULL AND song_id IS NOT NULL)
+    ),
+
+    UNIQUE (album_id),
+    UNIQUE (song_id),
+
+    FOREIGN KEY (album_id) REFERENCES albums(album_id) ON DELETE CASCADE,
+    FOREIGN KEY (song_id) REFERENCES songs(song_id) ON DELETE CASCADE
+) ENGINE = InnoDB;

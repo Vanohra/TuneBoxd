@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { fetchTargetReviews } from '../api/music.js';
+import ReviewDigest from './ReviewDigest.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { formatRating } from '../utils/format.js';
 import AddToListPanel from './AddToListPanel.jsx';
@@ -148,7 +149,7 @@ export function TargetActions({ targetType, mbid, title, reviewsData, onReviewSa
   );
 }
 
-export function ReviewsSection({ data, error, reload, noun = 'album' }) {
+export function ReviewsSection({ data, error, reload, noun = 'album', targetType, mbid }) {
   return (
     <section className="card">
       <div className="card-header">
@@ -162,11 +163,17 @@ export function ReviewsSection({ data, error, reload, noun = 'album' }) {
       ) : data.reviews.length === 0 ? (
         <EmptyState title="No reviews yet">Be the first to review this {noun}.</EmptyState>
       ) : (
-        <div className="review-list">
-          {data.reviews.map((review) => (
-            <ReviewCard key={review.id} review={review} onChanged={reload} onDeleted={reload} />
-          ))}
-        </div>
+        <>
+          {targetType && mbid && data.reviews.length >= 2 && (
+            // Keyed by review count so the digest reloads after a review is added or deleted.
+            <ReviewDigest key={data.stats.reviewCount} targetType={targetType} mbid={mbid} />
+          )}
+          <div className="review-list">
+            {data.reviews.map((review) => (
+              <ReviewCard key={review.id} review={review} onChanged={reload} onDeleted={reload} />
+            ))}
+          </div>
+        </>
       )}
     </section>
   );

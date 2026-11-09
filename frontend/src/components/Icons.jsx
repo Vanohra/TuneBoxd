@@ -190,3 +190,11 @@ export const RefreshIcon = (props) => (
     <path d="M20 20v-4h-4" />
   </Icon>
 );
+
+export const WandIcon = (props) => (
+  <Icon {...props}>
+    <path d="M4 20 15 9" />
+    <path d="m14 6 1-3 1 3 3 1-3 1-1 3-1-3-3-1z" />
+    <path d="M19 13v2M18 14h2M8 4v2M7 5h2" />
+  </Icon>
+);

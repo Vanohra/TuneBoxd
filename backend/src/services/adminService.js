@@ -10,6 +10,8 @@
 import * as reportRepository from '../repositories/reportRepository.js';
 import * as userRepository from '../repositories/userRepository.js';
 import { ServiceError } from '../utils/errors.js';
+import { isAiConfigured } from './aiClient.js';
+import { assessReview } from './moderationService.js';
 import { toPublicUser } from '../utils/safeUser.js';
 import { ACCOUNT_STATUSES, parseId, REPORT_REASONS, USER_ROLES } from '../utils/validation.js';
 
@@ -19,11 +21,15 @@ const withReasonLabel = (report) => ({ ...report, reasonLabel: REPORT_REASONS[re
 
 // ---------- Reports ----------
 
-/** `status`: one of REPORT_STATUSES or 'all'. Defaults to the pending queue. */
-export async function listReports(rawStatus = 'pending') {
+/**
+ * `status`: one of REPORT_STATUSES or 'all'. Defaults to the pending queue.
+ * `sort`: 'date' (default) or 'severity' (the AI's most serious first).
+ */
+export async function listReports(rawStatus = 'pending', rawSort = 'date') {
   const status = rawStatus === 'all' ? null : REPORT_STATUSES.includes(rawStatus) ? rawStatus : 'pending';
-  const [reports, counts] = await Promise.all([reportRepository.listReports({ status }), reportRepository.countByStatus()]);
-  return { reports: reports.map(withReasonLabel), counts };
+  const sort = rawSort === 'severity' ? 'severity' : 'date';
+  const [reports, counts] = await Promise.all([reportRepository.listReports({ status, sort }), reportRepository.countByStatus()]);
+  return { reports: reports.map(withReasonLabel), counts, aiEnabled: isAiConfigured() };
 }
 
 async function requireReport(rawId) {
@@ -50,6 +56,16 @@ export async function removeReview(adminId, rawId) {
   const report = await requireReport(rawId);
   if (report.status !== 'pending') throw new ServiceError(409, 'This report has already been handled.');
   await reportRepository.removeReportedReview(report.id, report.review.id, adminId);
+  return reload(report.id);
+}
+
+/** Runs (or re-runs) the AI moderation assistant on a report's review. */
+export async function analyzeReport(rawId) {
+  const report = await requireReport(rawId);
+  if (!isAiConfigured()) throw new ServiceError(503, 'The AI moderation assistant isn’t switched on for this site.');
+  if (!(await assessReview(report.review.id))) {
+    throw new ServiceError(503, 'The AI couldn’t analyze this review right now. Please try again in a moment.');
+  }
   return reload(report.id);
 }
 

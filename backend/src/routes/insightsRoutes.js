@@ -14,5 +14,6 @@ router.post('/recommendations/refresh', insightsController.refreshRecommendation
 router.get('/summaries', insightsController.listSummaries);
 router.post('/summaries', insightsController.createSummary);
 router.delete('/summaries/:id', insightsController.deleteSummary);
+router.post('/discover', insightsController.discover);
 
 export default router;

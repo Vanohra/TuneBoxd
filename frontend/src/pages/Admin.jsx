@@ -4,7 +4,7 @@ import { fetchAdminUsers, fetchReports, resolveReport, updateAdminUser } from '.
 import Alert from '../components/Alert.jsx';
 import Avatar from '../components/Avatar.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { SearchIcon } from '../components/Icons.jsx';
+import { SearchIcon, WandIcon } from '../components/Icons.jsx';
 import { EmptyState, ErrorState, Loading } from '../components/Status.jsx';
 import { formatDate, targetPath } from '../utils/format.js';
 
@@ -17,7 +17,69 @@ const REPORT_FILTERS = [
 
 const STATUS_LABELS = { pending: 'Pending', dismissed: 'Dismissed', removed: 'Removed', reviewed: 'Closed' };
 
-function ReportCard({ report, onResolved }) {
+const VERDICT_LABELS = {
+  ok: 'Looks fine',
+  spam: 'Likely spam',
+  harassment: 'Harassment',
+  hate: 'Hate speech',
+  explicit: 'Explicit content',
+  offtopic: 'Off-topic',
+  other: 'Other problem',
+};
+const ACTION_LABELS = { dismiss: 'Keep the review', remove: 'Remove the review', review: 'Needs a closer look' };
+
+const severityLevel = (severity) => (severity >= 70 ? 'high' : severity >= 35 ? 'medium' : 'low');
+
+/** Google Gemini's read of the reported review. Advice only: the admin decides. */
+function AiAssessment({ assessment, aiEnabled, busy, onAnalyze }) {
+  if (!assessment) {
+    if (!aiEnabled) return null;
+    return (
+      <div className="ai-assessment is-empty">
+        <span className="muted small">
+          <WandIcon size={14} /> No AI analysis yet.
+        </span>
+        <button type="button" className="link-button" disabled={busy} onClick={onAnalyze}>
+          Analyze with AI
+        </button>
+      </div>
+    );
+  }
+  const level = severityLevel(assessment.severity);
+  return (
+    <div className={`ai-assessment severity-${level}`}>
+      <div className="ai-assessment-header">
+        <span className="ai-assessment-title">
+          <WandIcon size={14} /> AI moderation assistant
+        </span>
+        <span className={`verdict-chip verdict-${assessment.verdict === 'ok' ? 'ok' : 'flag'}`}>
+          {VERDICT_LABELS[assessment.verdict] ?? assessment.verdict}
+        </span>
+        <span className="severity-meter" title={`Severity ${assessment.severity} out of 100`}>
+          <span className="severity-meter-fill" style={{ width: `${Math.max(4, assessment.severity)}%` }} />
+        </span>
+        <span className="small severity-value">{assessment.severity}/100</span>
+      </div>
+      <p className="ai-assessment-text">
+        <strong>Suggests: {ACTION_LABELS[assessment.suggestedAction] ?? assessment.suggestedAction}.</strong> {assessment.explanation}
+      </p>
+      <p className="muted small">
+        Google Gemini · {formatDate(assessment.analyzedAt)}
+        {assessment.isStale && ' · the review was edited after this analysis'}
+        {aiEnabled && (
+          <>
+            {' · '}
+            <button type="button" className="link-button" disabled={busy} onClick={onAnalyze}>
+              Re-analyze
+            </button>
+          </>
+        )}
+      </p>
+    </div>
+  );
+}
+
+function ReportCard({ report, aiEnabled, onResolved, onAnalyzed }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const { review } = report;
@@ -26,7 +88,13 @@ function ReportCard({ report, onResolved }) {
     setBusy(true);
     setError('');
     try {
-      onResolved(await resolveReport(report.id, action), action);
+      const updated = await resolveReport(report.id, action);
+      if (action === 'analyze') {
+        onAnalyzed(updated);
+        setBusy(false);
+      } else {
+        onResolved(updated, action);
+      }
     } catch (err) {
       setError(err.message);
       setBusy(false);
@@ -62,6 +130,8 @@ function ReportCard({ report, onResolved }) {
         )}
       </div>
 
+      <AiAssessment assessment={review.aiAssessment} aiEnabled={aiEnabled} busy={busy} onAnalyze={() => act('analyze')} />
+
       <Alert type="error">{error}</Alert>
       <footer className="form-actions">
         {report.status === 'pending' && (
@@ -91,16 +161,17 @@ function ReportCard({ report, onResolved }) {
 
 function ReportsPanel() {
   const [status, setStatus] = useState('pending');
+  const [sort, setSort] = useState('date');
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState('');
 
   const load = useCallback(() => {
     setError(null);
-    fetchReports(status)
+    fetchReports(status, sort)
       .then(setData)
       .catch(setError);
-  }, [status]);
+  }, [status, sort]);
 
   useEffect(() => {
     setData(null);
@@ -129,6 +200,17 @@ function ReportsPanel() {
           ))}
         </div>
       </div>
+      {data?.aiEnabled && (
+        <div className="report-toolbar">
+          <label htmlFor="report-sort" className="small muted">
+            Sort
+          </label>
+          <select id="report-sort" className="select-sm" value={sort} onChange={(event) => setSort(event.target.value)}>
+            <option value="date">{status === 'pending' ? 'Oldest first' : 'Newest first'}</option>
+            <option value="severity">Most serious first (AI)</option>
+          </select>
+        </div>
+      )}
       {notice && <Alert type="success">{notice}</Alert>}
       {error ? (
         <ErrorState title="Couldn’t load reports" message={error.message} onRetry={load} />
@@ -144,6 +226,17 @@ function ReportsPanel() {
             <ReportCard
               key={report.id}
               report={report}
+              aiEnabled={data.aiEnabled}
+              onAnalyzed={(updated) => {
+                setNotice('AI analysis updated.');
+                // Every report on the same review shares the analysis.
+                setData((prev) => ({
+                  ...prev,
+                  reports: prev.reports.map((r) =>
+                    r.review.id === updated.review.id ? { ...r, review: { ...r.review, aiAssessment: updated.review.aiAssessment } } : r,
+                  ),
+                }));
+              }}
               onResolved={(_, action) => {
                 setNotice(messages[action]);
                 // Reload: a handled report leaves the pending queue, and other reports on the same review change too.

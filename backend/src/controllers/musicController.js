@@ -1,3 +1,4 @@
+import * as digestService from '../services/digestService.js';
 import * as musicService from '../services/musicService.js';
 import * as reviewService from '../services/reviewService.js';
 
@@ -31,4 +32,14 @@ export async function getAlbumReviews(req, res) {
 // GET /api/music/songs/:mbid/reviews
 export async function getSongReviews(req, res) {
   res.json(await reviewService.listForTarget('song', req.params.mbid, viewerIdOf(req)));
+}
+
+// GET /api/music/albums/:mbid/digest: AI "What listeners are saying" (null when not enough reviews)
+export async function getAlbumDigest(req, res) {
+  res.json(await digestService.getDigest('album', req.params.mbid));
+}
+
+// GET /api/music/songs/:mbid/digest
+export async function getSongDigest(req, res) {
+  res.json(await digestService.getDigest('song', req.params.mbid));
 }

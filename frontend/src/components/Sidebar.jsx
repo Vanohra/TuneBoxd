@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { ChartIcon, CommunityIcon, DiaryIcon, HomeIcon, ListsIcon, SearchIcon, ShieldIcon, SparkleIcon, UserIcon } from './Icons.jsx';
+import { ChartIcon, CommunityIcon, DiaryIcon, HomeIcon, ListsIcon, SearchIcon, ShieldIcon, SparkleIcon, UserIcon, WandIcon } from './Icons.jsx';
 import Logo from './Logo.jsx';
 
 // Sections that need a session. Admin is added for administrators.
@@ -9,6 +9,7 @@ const MEMBER_LINKS = [
   { to: '/lists', label: 'Lists', Icon: ListsIcon },
   { to: '/stats', label: 'Stats', Icon: ChartIcon },
   { to: '/for-you', label: 'For You', Icon: SparkleIcon },
+  { to: '/discover', label: 'Ask AI', Icon: WandIcon },
   { to: '/profile', label: 'Profile', Icon: UserIcon },
 ];
 

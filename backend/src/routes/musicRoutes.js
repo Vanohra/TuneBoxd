@@ -7,8 +7,10 @@ const router = Router();
 router.get('/search', musicController.search);
 router.get('/albums/:mbid', musicController.getAlbum);
 router.get('/albums/:mbid/reviews', musicController.getAlbumReviews);
+router.get('/albums/:mbid/digest', musicController.getAlbumDigest);
 router.get('/artists/:mbid', musicController.getArtist);
 router.get('/songs/:mbid', musicController.getSong);
 router.get('/songs/:mbid/reviews', musicController.getSongReviews);
+router.get('/songs/:mbid/digest', musicController.getSongDigest);
 
 export default router;

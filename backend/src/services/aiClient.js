@@ -1,6 +1,7 @@
 /**
- * Thin wrapper around the Google Gemini API (free tier) for the AI features
- * (#13 recommendation reasons, #14 listening summaries).
+ * Thin wrapper around the Google Gemini API (free tier) for the AI features:
+ * recommendation reasons (#13), listening summaries (#14), Ask TuneBoxd
+ * discovery, the moderation assistant and album review digests.
  *
  * The AI features always work without it: recommendations are chosen from
  * TuneBoxd's own data and summaries are built from listening statistics. When
@@ -8,8 +9,9 @@
  * Any failure (no key, network, rate limit, safety block, bad JSON) returns
  * null and the caller keeps its rule-based text, so the API never breaks a page.
  *
- * Only aggregated music data is sent (titles, artists, counts, ratings, the
- * user's own review excerpts). Never emails, passwords or other users' data.
+ * Only music data is sent: titles, artists, counts, ratings, a user's own
+ * review excerpts, public review text (digests, moderation) and discovery
+ * requests. Never emails, passwords or account details.
  * Google may use free-tier prompts to improve its products.
  */
 import { config } from '../config.js';
