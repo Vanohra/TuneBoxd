@@ -4,6 +4,7 @@ import { AdminRoute, GuestOnlyRoute, ProtectedRoute } from './components/RouteGu
 import Sidebar from './components/Sidebar.jsx';
 import Admin from './pages/Admin.jsx';
 import AlbumPage from './pages/AlbumPage.jsx';
+import AllReviews from './pages/AllReviews.jsx';
 import ArtistPage from './pages/ArtistPage.jsx';
 import Community from './pages/Community.jsx';
 import Diary from './pages/Diary.jsx';
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="/album/:mbid" element={<AlbumPage />} />
             <Route path="/artist/:mbid" element={<ArtistPage />} />
             <Route path="/song/:mbid" element={<SongPage />} />
+            <Route path="/reviews" element={<AllReviews />} />
             <Route path="/reviews/:id" element={<ReviewPage />} />
             {/* Public lists are viewable logged out; private ones 404 for everyone but the owner (checked by the API). */}
             <Route path="/lists/:id" element={<ListPage />} />

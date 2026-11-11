@@ -4,9 +4,10 @@ import * as reviewService from '../services/reviewService.js';
 
 const viewerIdOf = (req) => req.session?.userId ?? null;
 
-// GET /api/reviews (recent reviews across TuneBoxd)
+// GET /api/reviews?limit=&offset= (recent reviews across TuneBoxd, newest first)
 export async function listRecent(req, res) {
-  res.json({ reviews: await reviewService.listRecent(viewerIdOf(req)) });
+  const { limit, offset } = req.query;
+  res.json({ reviews: await reviewService.listRecent(viewerIdOf(req), { limit, offset }) });
 }
 
 // GET /api/reviews/:id

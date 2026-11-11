@@ -49,8 +49,8 @@ export async function listByUsername(username, viewerId) {
   return reviews.map((review) => withOwner(review, viewerId));
 }
 
-export async function listRecent(viewerId) {
-  const reviews = await reviewRepository.listRecentReviews({ limit: 12 });
+export async function listRecent(viewerId, { limit = 12, offset = 0 } = {}) {
+  const reviews = await reviewRepository.listRecentReviews({ limit, offset });
   return reviews.map((review) => withOwner(review, viewerId));
 }
 

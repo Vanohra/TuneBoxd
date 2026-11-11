@@ -1,7 +1,11 @@
 import { apiRequest } from './client.js';
 
-export async function fetchRecentReviews() {
-  const { reviews } = await apiRequest('/reviews');
+export async function fetchRecentReviews({ limit, offset } = {}) {
+  const params = new URLSearchParams();
+  if (limit != null) params.set('limit', limit);
+  if (offset != null) params.set('offset', offset);
+  const query = params.toString();
+  const { reviews } = await apiRequest(query ? `/reviews?${query}` : '/reviews');
   return reviews;
 }
 

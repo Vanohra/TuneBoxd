@@ -74,7 +74,12 @@ export default function Home() {
 
       {reviews?.length > 0 && (
         <section className="card">
-          <h2 className="section-title">Latest from the community</h2>
+          <div className="card-header">
+            <h2 className="section-title">Latest from the community</h2>
+            <Link to="/reviews" className="list-footer">
+              See all reviews →
+            </Link>
+          </div>
           <div className="review-list">
             {reviews.slice(0, 4).map((review) => (
               <ReviewCard key={review.id} review={review} showTarget />

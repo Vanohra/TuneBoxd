@@ -87,9 +87,10 @@ export async function listReviewsByUser(userId, { limit = 50, offset = 0 } = {})
   return rows.map(toReview);
 }
 
-export async function listRecentReviews({ limit = 10 } = {}) {
+export async function listRecentReviews({ limit = 10, offset = 0 } = {}) {
   const [rows] = await pool.execute(
-    `${SELECT_REVIEWS} WHERE ${VISIBLE_REVIEW} ORDER BY t.created_at DESC, t.review_id DESC LIMIT ${int(limit, 10, 50)}`,
+    `${SELECT_REVIEWS} WHERE ${VISIBLE_REVIEW} ORDER BY t.created_at DESC, t.review_id DESC
+     LIMIT ${int(limit, 10, 50)} OFFSET ${int(offset, 0, 100_000)}`,
   );
   return rows.map(toReview);
 }
